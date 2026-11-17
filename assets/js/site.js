@@ -27,7 +27,7 @@
     "tab.resources": "资源",
     "cap.resources": "资源：一台工作站、ARK 服务器和两台 GPU 服务器，标出我们的任务占用的 GPU 和他人使用的 GPU。示例数据。",
     "nav.about": "关于",
-    "mock.aria": "ARK Studio 动画导览：研究地图生长、智能体并行工作、审阅结果、GPU 任务运行。",
+    "mock.aria": "ARK Studio 动画导览：研究地图生长、从 InfoHub 导入资料、智能体并行工作、审阅结果、GPU 任务运行。",
     "mock.home": "首页",
     "mock.research": "研究",
     "mock.map": "地图",

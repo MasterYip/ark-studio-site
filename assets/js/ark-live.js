@@ -122,13 +122,15 @@ new MutationObserver(() => refreshers.forEach((fn) => fn())).observe(root, { att
 // ------------------------------------------------------------ Force canvas
 // ARK's Force map: stepForce with GRAPH_DEFAULTS, drawForceNode, arrowheads.
 class ForceCanvas {
-  constructor(host, { labels = true, minLabelDegree = 0, overlay = null, fitPad = 40, insetRight = null } = {}) {
+  constructor(host, { labels = true, minLabelDegree = 0, overlay = null, fitPad = 40, insetRight = null, colorOf = null, labelOf = null, edgeStyle = null, radiusOf = null, padTop = 0, fitFilter = null } = {}) {
     this.host = host;
     this.canvas = h("canvas", { "aria-hidden": "true" });
     host.append(this.canvas);
     this.ctx = this.canvas.getContext("2d");
     this.nodes = []; this.edges = []; this.byId = new Map();
     this.labels = labels; this.minLabelDegree = minLabelDegree; this.overlay = overlay; this.fitPad = fitPad; this.insetRight = insetRight;
+    this.colorOf = colorOf || ((n) => typeColor(n.type));
+    this.labelOf = labelOf; this.edgeStyle = edgeStyle; this.radiusOf = radiusOf; this.padTop = padTop; this.fitFilter = fitFilter;
     this.view = null; this.running = false; this.visible = false; this.idle = 0;
     this.cfg = { ...GRAPH_DEFAULTS, distance: 46 };
     this.pal = palette(host);
@@ -149,7 +151,7 @@ class ForceCanvas {
   }
   set(nodes, edges) {
     this.nodes = nodes; this.edges = edges; this.byId = new Map(nodes.map((n) => [n.id, n]));
-    nodes.forEach((n, i) => { if (!n.x && !n.y) { const a = i * 2.399963; const r = 18 * Math.sqrt(i + 1); n.x = Math.cos(a) * r; n.y = Math.sin(a) * r; } });
+    nodes.forEach((n, i) => { n.vx = n.vx || 0; n.vy = n.vy || 0; if (!n.x && !n.y) { const a = i * 2.399963; const r = 18 * Math.sqrt(i + 1); n.x = Math.cos(a) * r; n.y = Math.sin(a) * r; } });
     this.idle = 0;
   }
   add(node, edges = []) {
@@ -166,10 +168,11 @@ class ForceCanvas {
   fit(immediate) {
     if (!this.nodes.length) return;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const n of this.nodes) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y); }
+    for (const n of (this.fitFilter ? this.nodes.filter(this.fitFilter) : this.nodes)) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y); }
     const pad = this.fitPad, right = this.insetRight ? this.insetRight(this.w) : 0, W = this.w - right;
-    const z = Math.min(1.5, (W - pad * 2) / Math.max(120, x1 - x0), (this.h - pad * 2) / Math.max(120, y1 - y0));
-    const target = { z, x: W / 2 - ((x0 + x1) / 2) * z, y: this.h / 2 - ((y0 + y1) / 2) * z };
+    const top = this.padTop || 0, H = this.h - top;
+    const z = Math.min(1.5, (W - pad * 2) / Math.max(120, x1 - x0), (H - pad * 2) / Math.max(120, y1 - y0));
+    const target = { z, x: W / 2 - ((x0 + x1) / 2) * z, y: top + H / 2 - ((y0 + y1) / 2) * z };
     if (!this.view || immediate) this.view = target;
     else for (const k of ["z", "x", "y"]) this.view[k] += (target[k] - this.view[k]) * 0.08;
   }
@@ -207,7 +210,7 @@ class ForceCanvas {
       const dx = q.x - p.x, dy = q.y - p.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
       const rb = forceNodeRadius(b, z, true) + 2;
       const ex = p.x + dx * k - ux * (k === 1 ? rb : 0), ey = p.y + dy * k - uy * (k === 1 ? rb : 0);
-      ctx.strokeStyle = alpha(pal.sub, e.relation === "part_of" ? 0.42 : 0.3);
+      ctx.strokeStyle = this.edgeStyle ? this.edgeStyle(e) : alpha(pal.sub, e.relation === "part_of" ? 0.42 : 0.3);
       ctx.setLineDash(e.relation === "part_of" ? [] : [4, 4]);
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(ex, ey); ctx.stroke();
       if (k === 1 && len > 30) addArrowhead(heads, ex, ey, ux, uy, arrowSize(1.2, z), "triangle");
@@ -218,11 +221,12 @@ class ForceCanvas {
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (const n of this.nodes) {
       const s = this.screen(n), k = grow(n.born);
-      const r = forceNodeRadius(n, z, true) * (0.4 + 0.6 * k);
+      const r = (this.radiusOf ? this.radiusOf(n) * Math.min(1.25, Math.max(0.7, z)) : forceNodeRadius(n, z, true)) * (0.4 + 0.6 * k);
       ctx.globalAlpha = k;
-      drawForceNode(ctx, n, s.x, s.y, r, typeColor(n.type), pal.bg);
-      if (this.labels && (n.degree || 0) >= this.minLabelDegree) {
-        const max = zh() ? 12 : 24, text = n.title.length > max ? n.title.slice(0, max - 1) + "…" : n.title;
+      drawForceNode(ctx, n, s.x, s.y, r, this.colorOf(n), pal.bg);
+      const raw = this.labelOf ? this.labelOf(n) : (this.labels && (n.degree || 0) >= this.minLabelDegree ? n.title : null);
+      if (raw) {
+        const max = zh() ? 12 : 24, text = raw.length > max ? raw.slice(0, max - 1) + "…" : raw;
         ctx.lineWidth = 3; ctx.strokeStyle = alpha(pal.bg, 0.85); ctx.lineJoin = "round";
         ctx.strokeText(text, s.x, s.y + r + 3);
         ctx.fillStyle = pal.ink; ctx.fillText(text, s.x, s.y + r + 3);
@@ -786,10 +790,178 @@ function resourcesScene(pane) {
   };
 }
 
+// ------------------------------------------- scene: import from InfoHub
+// As on Research › Ideas: InfoHub's read-only graph on the left (a faint
+// background of many items with one highlighted topic cluster), the editable
+// ARK graph on the right. The cluster is dragged across, dropped, pasted as
+// idea nodes around their hub, linked into the project and picked up by an
+// agent. Topics are fictional.
+const IH_HUB = ["Tactile sensing", "触觉感知"];
+const IH_KIDS = [
+  ["Tactile pretraining datasets", "触觉预训练数据集"], ["Slip detection in grasping", "抓取中的滑移检测"], ["Sim tactile rendering", "仿真触觉渲染"],
+  ["Gel sensor wear", "凝胶传感器磨损"], ["Contact force estimation", "接触力估计"], ["Texture classification", "纹理分类"],
+  ["Tactile-visual fusion", "触觉与视觉融合"], ["Calibration drift", "标定漂移"], ["In-hand pose tracking", "手内位姿跟踪"],
+  ["Tactile policy learning", "触觉策略学习"], ["Low-cost sensor skins", "低成本电子皮肤"], ["Shear field imaging", "剪切场成像"],
+];
+const ARK_BASE = [
+  ["q1", "question", "Does touch make grasping more reliable?", "触觉能让抓取更可靠吗？"],
+  ["c1", "claim", "Slip is detectable before it happens", "滑移可以在发生前被检测"],
+  ["x1", "experiment", "Grasp trials with gel sensors", "凝胶传感器抓取试验"],
+  ["s1", "source", "Paper feed", "论文订阅"],
+  ["c2", "claim", "Vision alone misses contact events", "仅靠视觉会漏掉接触事件"],
+];
+const BG_COUNT = 64;
+function infohubScene(pane) {
+  pane.innerHTML = "";
+  const panel = (cls) => h("div", { class: `ih-panel ${cls}` },
+    h("div", { class: "ih-ph" }, h("div", null, h("b", { class: "ih-title" }), h("span", { class: "ih-sub" })), h("span", { class: "ih-count" })),
+    h("div", { class: "ih-tools" }), h("div", { class: "ih-canvas" }),
+    h("div", { class: "ih-legend" }), h("div", { class: "ih-stats" }));
+  const left = panel("ih-left"), right = panel("ih-right");
+  const ghost = svgEl(`<svg class="ih-ghost" viewBox="0 0 120 90" aria-hidden="true">${
+    Array.from({ length: 10 }, (_, k) => { const a = k / 10 * Math.PI * 2, x = 60 + Math.cos(a) * 34, y = 45 + Math.sin(a) * 30; return `<path d="M60 45L${x.toFixed(1)} ${y.toFixed(1)}" class="g-e"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" class="g-n"/>`; }).join("")
+  }<circle cx="60" cy="45" r="10" class="g-hub"/><path d="M84 60 l0 18 l5 -5 l4 8 l3 -1.5 l-4 -8 l7 0 z" class="g-cur"/></svg>`);
+  const toast = h("div", { class: "ih-toast" });
+  pane.append(left, right, ghost, toast);
+  const IDEA = typeColor("idea"), BLUE = "#3b82f6";
+  let picked = false, pasted = false, agentTo = null;
+  const agent = { x: null, y: null };
+  const ih = new ForceCanvas(left.querySelector(".ih-canvas"), { fitPad: 70, padTop: 30, fitFilter: (n) => n.cluster,
+    colorOf: (n) => (n.cluster ? BLUE : alpha(palette(pane).sub, 0.35)),
+    labelOf: (n) => (n.hub || (n.cluster && n.labelled && ih.w > 420) ? n.title : null),
+    edgeStyle: (e) => (e.cluster ? alpha(BLUE, 0.65) : alpha(palette(pane).sub, 0.16)),
+    radiusOf: (n) => (n.hub ? 13 : n.cluster ? 6.5 : 4),
+    overlay: (ctx, view) => {
+      if (!picked) return;
+      const hub = view.byId.get("ih-hub"); if (!hub) return;
+      const s = view.screen(hub);
+      ctx.beginPath(); ctx.arc(s.x, s.y, 20, 0, Math.PI * 2); ctx.strokeStyle = alpha(BLUE, 0.5); ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+    } });
+  const ark = new ForceCanvas(right.querySelector(".ih-canvas"), { fitPad: 22, padTop: 40,
+    colorOf: (n) => (n.base ? alpha(typeColor(n.type), 0.4) : typeColor(n.type)),
+    labelOf: (n) => (n.base ? null : n.hub || (n.labelled && ark.w > 420) ? n.title : null),
+    radiusOf: (n) => (n.hub ? 12 : n.base ? 6 : 7.5),
+    overlay: (ctx, view) => {
+      ctx.font = "500 10.5px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      for (const n of view.nodes) {
+        if (!n.base) continue;
+        const s = view.screen(n);
+        ctx.fillStyle = alpha(view.pal.sub, 0.55);
+        const t = n.title.length > 26 ? n.title.slice(0, 25) + "…" : n.title;
+        ctx.fillText(t, s.x, s.y + 9);
+      }
+      if (agentTo && view.byId.get(agentTo)) {
+        const s = view.screen(view.byId.get(agentTo)), tx = s.x + 15, ty = s.y - 15;
+        if (agent.x == null) { agent.x = tx; agent.y = ty; }
+        agent.x += (tx - agent.x) * 0.1; agent.y += (ty - agent.y) * 0.1;
+        ctx.beginPath(); ctx.arc(agent.x, agent.y, 10, 0, Math.PI * 2); ctx.fillStyle = "#a78bfa"; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = view.pal.bg; ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.font = "700 9px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("A1", agent.x, agent.y + 0.5);
+      }
+    } });
+  const tools = (readOnly) => h("div", { class: "ih-tb" },
+    readOnly ? h("span", { class: "ih-tb-ro" }, L("READ ONLY", "只读")) : h("span", { class: "ih-tb-mode" }, h("i", null, L("Read", "阅读")), h("i", { class: "on" }, L("Edit", "编辑"))),
+    h("span", { class: "ih-tb-sel" }, "Force", icon("chevron", "sm")), icon("link", "sm"), icon("search", "sm"), icon("fit", "sm"), icon("maximize", "sm"));
+  function counts() {
+    const ihN = BG_COUNT + IH_KIDS.length + 1, ihE = ih.edges.length;
+    left.querySelector(".ih-count").textContent = String(ihN);
+    left.querySelector(".ih-stats").textContent = L(`${ihN} nodes · ${ihE} links`, `${ihN} 个节点 · ${ihE} 条连接`);
+    left.querySelector(".ih-legend").replaceChildren(h("span", { style: `--c:${IDEA}` }, L("Idea", "想法") + " " + ihN));
+    const ideas = ark.nodes.filter((n) => n.type === "idea").length;
+    right.querySelector(".ih-count").textContent = String(ark.nodes.length);
+    right.querySelector(".ih-stats").textContent = L(`${ark.nodes.length} nodes · ${ark.edges.length} links`, `${ark.nodes.length} 个节点 · ${ark.edges.length} 条连接`);
+    right.querySelector(".ih-legend").replaceChildren(
+      ...(ideas ? [h("span", { style: `--c:${IDEA}` }, L("Idea", "想法") + " " + ideas)] : []),
+      h("span", { style: `--c:${typeColor("question")}` }, L("Question", "问题") + " 1"), h("span", { style: `--c:${typeColor("claim")}` }, L("Claim", "论断") + " 2"));
+  }
+  function build() {
+    picked = false; pasted = false; agentTo = null; agent.x = null;
+    left.querySelector(".ih-title").textContent = L("InfoHub graph", "InfoHub 图谱");
+    left.querySelector(".ih-sub").textContent = L("Read-only source · drag or copy into ARK", "只读来源 · 拖动或复制到 ARK");
+    right.querySelector(".ih-title").textContent = L("ARK graph", "ARK 图谱");
+    right.querySelector(".ih-sub").textContent = L("The editable project graph · drop here", "可编辑的项目图谱 · 拖放到这里");
+    left.querySelector(".ih-tools").replaceChildren(tools(true));
+    right.querySelector(".ih-tools").replaceChildren(tools(false));
+    // InfoHub: many faint items in loose groups, and the highlighted topic.
+    const nodes = [], edges = [];
+    for (let i = 0; i < BG_COUNT; i++) {
+      nodes.push({ id: "bg" + i, type: "idea", status: "open", title: "" });
+      if (i % 7) edges.push({ source: "bg" + i, target: "bg" + (i - (i % 7)), relation: "part_of" });
+    }
+    nodes.push({ id: "ih-hub", type: "idea", status: "active", title: L(...IH_HUB), cluster: true, hub: true });
+    IH_KIDS.forEach((k, i) => { nodes.push({ id: "ih" + i, type: "idea", status: "open", title: L(...k), cluster: true }); edges.push({ source: "ih" + i, target: "ih-hub", relation: "part_of", cluster: true }); });
+    ih.set(nodes, edges); ih.settle(360);
+    // Put the topic in the middle, spread radially, and keep the rest around it.
+    for (const n of nodes) if (!n.cluster) { const d = Math.hypot(n.x, n.y) || 1, k = Math.max(1, 150 / d); n.x *= k; n.y *= k; }
+    const hubN = ih.byId.get("ih-hub"); hubN.x = 0; hubN.y = 0;
+    IH_KIDS.forEach((_, i) => { const n = ih.byId.get("ih" + i), a = i / IH_KIDS.length * Math.PI * 2 - Math.PI / 2; n.x = Math.cos(a) * 92; n.y = Math.sin(a) * 78; n.labelled = i % 3 === 0; });
+    ih.idle = Infinity; ih.view = null;
+    ark.set(ARK_BASE.map(([id, type, en, cn]) => ({ id, type, status: "open", title: L(en, cn), base: true })),
+      [["c1", "q1"], ["x1", "c1"], ["c2", "q1"], ["s1", "c2"]].map(([a, b]) => ({ source: a, target: b, relation: "part_of" })));
+    ark.settle(300);
+    ghost.classList.remove("on", "fly"); toast.classList.remove("on");
+    toast.textContent = L(`Pasted ${IH_KIDS.length + 1} orphan nodes`, `已粘贴 ${IH_KIDS.length + 1} 个孤立节点`);
+    counts(); ih.draw(); ark.draw();
+  }
+  function paste(withBirth) {
+    if (pasted) return;
+    pasted = true;
+    const hub = { id: "ark-hub", type: "idea", status: "inbox", title: L(...IH_HUB), hub: true, x: 40, y: 10 };
+    ark.add(hub, []);
+    hub.x = 40; hub.y = 10;
+    IH_KIDS.forEach((k, i) => {
+      const n = { id: "ak" + i, type: "idea", status: "inbox", title: L(...k) };
+      ark.add(n, [{ source: n.id, target: "ark-hub", relation: "part_of" }]);
+      const a = i / IH_KIDS.length * Math.PI * 2; n.x = 40 + Math.cos(a) * 70; n.y = 10 + Math.sin(a) * 60; n.labelled = i % 3 === 0;
+    });
+    if (!withBirth) { ark.nodes.forEach((n) => { n.born = null; }); ark.edges.forEach((e) => { e.born = null; }); }
+    counts();
+  }
+  const at = (fc, el, id) => {
+    const n = fc.byId.get(id); if (!n || !fc.view) return { x: 0, y: 0 };
+    const s = fc.screen(n), r = el.getBoundingClientRect(), p = pane.getBoundingClientRect();
+    return { x: s.x + r.left - p.left, y: s.y + r.top - p.top };
+  };
+  const t = timersOf();
+  let running = false;
+  build();
+  refreshers.add(() => { build(); if (!running) settle(); });
+  function settle() {
+    t.clear(); ih.stop(); ark.stop(); build();
+    picked = true; paste(false);
+    ark.edges.push({ source: "ark-hub", target: "q1", relation: "relates_to" });
+    ark.settle(220); ark.fit(true);
+    agentTo = "ark-hub"; toast.classList.add("on"); counts();
+    ih.draw(); ark.draw();
+  }
+  return {
+    length: 11000,
+    play() {
+      running = true; t.clear(); build(); ih.start(); ark.start();
+      t.add(800, () => { picked = true; });
+      t.add(1900, () => {
+        const a = at(ih, left.querySelector(".ih-canvas"), "ih-hub"), rr = right.querySelector(".ih-canvas").getBoundingClientRect(), p = pane.getBoundingClientRect();
+        const b = { x: rr.left - p.left + rr.width * 0.55, y: rr.top - p.top + rr.height * 0.55 };
+        ghost.style.transform = `translate(${a.x - 60}px, ${a.y - 45}px)`; ghost.classList.add("on");
+        t.add(60, () => { ghost.classList.add("fly"); ghost.style.transform = `translate(${b.x - 60}px, ${b.y - 45}px)`; });
+      });
+      t.add(3900, () => { ghost.classList.remove("on", "fly"); paste(true); });
+      t.add(4400, () => toast.classList.add("on"));
+      t.add(6600, () => { toast.classList.remove("on"); ark.edges.push({ source: "ark-hub", target: "q1", relation: "relates_to", born: performance.now() }); ark.idle = 0; counts(); });
+      t.add(7600, () => { agentTo = "ark-hub"; });
+      t.add(9000, () => { agentTo = "ak3"; });
+    },
+    stop() { running = false; t.clear(); ih.stop(); ark.stop(); },
+    settle() { running = false; settle(); },
+    resize() { ih.resize(); ih.view = null; ark.resize(); ark.view = null; ih.draw(); ark.draw(); },
+  };
+}
+
 // ---------------------------------------------------------- the player
 if (hero) {
   const SCENES = [
     { key: "map", tab: "map", name: ["Research map", "研究地图"], build: mapScene },
+    { key: "infohub", tab: "research", name: ["Import from InfoHub", "想法导入"], build: infohubScene },
     { key: "agents", tab: "execute", name: ["Agents in parallel", "智能体并行"], build: agentsScene },
     { key: "review", tab: "home", name: ["Review", "审阅"], build: reviewScene },
     { key: "resources", tab: "execute", name: ["Resources and GPUs", "资源与算力"], build: resourcesScene },
