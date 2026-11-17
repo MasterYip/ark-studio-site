@@ -45,8 +45,8 @@ other macOS browsers get Apple silicon first.
 ## Live previews
 
 The hero, the pillar visuals and the preview tabs are built in the page, not
-screenshots. `ark-live.js` renders a fixed, fictional demo project (a
-learning-rate warm-up study) with ARK's own code:
+screenshots. `ark-live.js` renders a small sample project worded after ARK's public
+PredActor demo (titles in English, as in the demo) with ARK's own code:
 
 * Hero: five scenes in one window, like segments of a short film, each
   with its own composition: the research map growing on ARK's Force
@@ -68,8 +68,13 @@ learning-rate warm-up study) with ARK's own code:
   ARK's type colours, node cards, task bars, agent badges, GPU meters).
 * Mind: ARK's Mind layout and card sizing (`ark/mind-layout.js`,
   `ark/node-card.js`); cards are painted the way `graph.js` paints them.
-* Home and Board: the markup ARK renders for KPI tiles, Needs you, the
-  research pipeline and task cards, styled by `ark-ui.css`.
+* Home and Board: ARK's own rendered markup for the public PredActor demo
+  project, captured from a running ark-server by `tools/snapshot_ark_views.py`
+  into `assets/js/ark/views-snapshot.js` (EN and 中文; loaded only when the
+  preview comes into view), laid out at the app's desktop width and scaled to
+  fit. `ark-ui.css` is extracted from the same checkout's `app.css` with the
+  snapshot's classes: `python site/tools/extract_ark_css.py <app.css>
+  site/assets/css/ark-ui.css <commit> site/assets/js/ark/views-snapshot.js`.
 * Resources: the device cards rebuilt in DOM (ARK draws them on a canvas in a
   view that needs a server); hosts, jobs and usage are made up.
 

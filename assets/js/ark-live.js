@@ -17,7 +17,8 @@ const STATUS_COLORS = { inbox: "#94a3b8", open: "#60a5fa", active: "#22c55e", re
 const statusColor = (s) => STATUS_COLORS[s] || "#94a3b8";
 
 // ------------------------------------------------------------ demo project
-// A fictional study: does learning-rate warm-up remove early loss spikes?
+// Wording from ARK's public PredActor demo project (the demo seed); the
+// structure is the site's own small sample. Titles stay in English, as in the demo.
 const TYPES = {
   story: ["Story", "故事线"], question: ["Question", "问题"], claim: ["Claim", "论断"], evidence: ["Evidence", "证据"],
   related_work: ["Related work", "相关工作"], experiment: ["Experiment", "实验"], method: ["Method", "方法"],
@@ -26,32 +27,32 @@ const TYPES = {
 };
 // id, type, status, parent (part_of), English, Chinese
 const DEMO = [
-  ["S-0001", "story", "active", null, "Warm-up and early loss spikes", "预热与早期损失尖峰"],
-  ["Q-0001", "question", "active", "S-0001", "Does warm-up remove early loss spikes?", "预热能否消除早期损失尖峰？"],
-  ["Q-0002", "question", "open", "S-0001", "Does it change the final loss?", "它会改变最终损失吗？"],
-  ["M-0001", "method", "done", "S-0001", "60M decoder, AdamW, 5k steps", "60M 解码器，AdamW，5k 步"],
-  ["C-0001", "claim", "review", "Q-0001", "Warm-up removes early spikes", "预热消除早期尖峰"],
-  ["C-0002", "claim", "active", "Q-0002", "Final loss is unchanged", "最终损失不变"],
-  ["C-0003", "claim", "open", "Q-0001", "Spikes come from early Adam variance", "尖峰来自 Adam 早期方差"],
-  ["E-0001", "evidence", "done", "C-0001", "3 seeds, no spikes with warm-up", "3 个种子，预热后无尖峰"],
-  ["E-0002", "evidence", "review", "C-0002", "Loss within 0.02 at 5k steps", "5k 步时损失差在 0.02 内"],
-  ["R-0001", "related_work", "done", "C-0001", "Goyal et al. 2017", "Goyal 等 2017"],
-  ["R-0002", "related_work", "done", "C-0003", "Liu et al. 2020, RAdam", "Liu 等 2020，RAdam"],
-  ["R-0003", "related_work", "open", "C-0002", "Vaswani et al. 2017", "Vaswani 等 2017"],
-  ["X-0001", "experiment", "done", "C-0001", "Warm-up sweep: 0, 250, 500 steps", "预热扫描：0、250、500 步"],
-  ["X-0002", "experiment", "active", "C-0002", "Baseline, 3 seeds", "基线，3 个种子"],
-  ["X-0003", "experiment", "open", "C-0002", "Learning-rate sweep", "学习率扫描"],
-  ["X-0004", "experiment", "inbox", "C-0003", "Second-moment probe", "二阶矩探测"],
-  ["T-0011", "task", "done", "X-0001", "Run warm-up sweep", "运行预热扫描"],
-  ["T-0012", "task", "review", "X-0001", "Plot loss curves", "绘制损失曲线"],
-  ["T-0013", "task", "active", "X-0002", "Rerun baseline", "重跑基线"],
-  ["T-0014", "task", "open", "X-0003", "Write sweep config", "编写扫描配置"],
-  ["T-0015", "task", "blocked", "X-0004", "Log Adam second moment", "记录 Adam 二阶矩"],
-  ["A-0001", "artifact", "done", "T-0012", "loss-curves.png", "loss-curves.png"],
-  ["A-0002", "artifact", "done", "T-0011", "results.csv", "results.csv"],
-  ["D-0001", "decision", "done", "C-0001", "Default to 500-step warm-up", "默认使用 500 步预热"],
-  ["I-0001", "idea", "inbox", "S-0001", "Warm-up for batch size too?", "批大小也做预热？"],
-  ["P-0001", "production", "active", "S-0001", "Workshop paper draft", "研讨会论文初稿"],
+  ["S-0001", "story", "active", null, "PredActor — the paper as a graph", "PredActor — the paper as a graph"],
+  ["Q-0001", "question", "active", "S-0001", "Can one policy be both predictable and deployable?", "Can one policy be both predictable and deployable?"],
+  ["Q-0002", "question", "open", "S-0001", "What does whole-body guidance actually buy?", "What does whole-body guidance actually buy?"],
+  ["M-0001", "method", "done", "S-0001", "PRDP · predictable diffusion policy", "PRDP · predictable diffusion policy"],
+  ["C-0001", "claim", "review", "Q-0001", "PRDP improves text-conditioned push survival at matched budget", "PRDP improves text-conditioned push survival at matched budget"],
+  ["C-0002", "claim", "active", "Q-0002", "WBG guidance helps only when the tracker is already stable", "WBG guidance helps only when the tracker is already stable"],
+  ["C-0003", "claim", "open", "Q-0001", "The Q2 DAgger failure is a protocol artifact", "The Q2 DAgger failure is a protocol artifact"],
+  ["E-0001", "evidence", "done", "C-0001", "Q1 fair benchmark — 390/390 cells", "Q1 fair benchmark — 390/390 cells"],
+  ["E-0002", "evidence", "review", "C-0002", "Q4 WBG pilot — partial", "Q4 WBG pilot — partial"],
+  ["R-0001", "related_work", "done", "C-0001", "Diffusion Policy", "Diffusion Policy"],
+  ["R-0002", "related_work", "done", "C-0003", "BeyondMimic", "BeyondMimic"],
+  ["R-0003", "related_work", "open", "C-0002", "HumanoidBench", "HumanoidBench"],
+  ["X-0001", "experiment", "done", "C-0001", "Q1 · capability-matched fair benchmark", "Q1 · capability-matched fair benchmark"],
+  ["X-0002", "experiment", "active", "C-0002", "Q4 · WBG guidance ablation", "Q4 · WBG guidance ablation"],
+  ["X-0003", "experiment", "open", "C-0002", "Q3 · sampler and schedule benchmark", "Q3 · sampler and schedule benchmark"],
+  ["X-0004", "experiment", "inbox", "C-0003", "Q2 · DAgger checkpoint-matched rerun", "Q2 · DAgger checkpoint-matched rerun"],
+  ["T-0011", "task", "done", "X-0001", "Run the 390 Q1 terminal cells", "Run the 390 Q1 terminal cells"],
+  ["T-0012", "task", "review", "X-0001", "Build the paper figure suite v3", "Build the paper figure suite v3"],
+  ["T-0013", "task", "active", "X-0002", "Run the Q4 WBG ablation on gpu-server-1", "Run the Q4 WBG ablation on gpu-server-1"],
+  ["T-0014", "task", "open", "X-0003", "Freeze the Q1 evaluation suite", "Freeze the Q1 evaluation suite"],
+  ["T-0015", "task", "blocked", "X-0004", "Rerun DAgger with matched checkpoints", "Rerun DAgger with matched checkpoints"],
+  ["A-0001", "artifact", "done", "T-0012", "Mind graph · workbench view", "Mind graph · workbench view"],
+  ["A-0002", "artifact", "done", "T-0011", "Q2 negative-result memo", "Q2 negative-result memo"],
+  ["D-0001", "decision", "done", "C-0001", "Freeze Q1 protocol v1.2", "Freeze Q1 protocol v1.2"],
+  ["I-0001", "idea", "inbox", "S-0001", "Event-triggered replanning beats fixed chunking", "Event-triggered replanning beats fixed chunking"],
+  ["P-0001", "production", "active", "S-0001", "Figure suite v3", "Figure suite v3"],
 ];
 const CROSS = [["E-0001", "X-0001"], ["A-0001", "E-0001"], ["D-0001", "X-0001"], ["R-0001", "X-0001"], ["E-0002", "X-0002"], ["P-0001", "C-0001"]];
 
@@ -408,8 +409,8 @@ function needsRow({ uid, title, excerpt, age, state = "" }) {
           h("span", { class: "btn sm ghost" }, icon("message", "sm"), L("Comment", "评论"))))));
 }
 const NEEDS = () => [
-  { uid: "T-0012", title: L("Plot loss curves", "绘制损失曲线"), excerpt: L("Curves for 0, 250 and 500 warm-up steps, 3 seeds each. No spike above 1.5x the running mean with 500 steps.", "0、250、500 步预热各 3 个种子的曲线。500 步预热下没有超过滑动均值 1.5 倍的尖峰。"), age: L("12 min ago", "12 分钟前") },
-  { uid: "E-0002", title: L("Loss within 0.02 at 5k steps", "5k 步时损失差在 0.02 内"), excerpt: L("Final loss 2.08 with warm-up, 2.10 without. Supports C-0002.", "有预热 2.08，无预热 2.10，支持 C-0002。"), age: L("1 h ago", "1 小时前") },
+  { uid: "T-0012", title: L("Build the paper figure suite v3", "Build the paper figure suite v3"), excerpt: L("Figure 1 is the mind graph; Figure 2 is the fairness table; Figure 3 is the Q2 negative result.", "Figure 1 is the mind graph; Figure 2 is the fairness table; Figure 3 is the Q2 negative result."), age: L("12 min ago", "12 分钟前") },
+  { uid: "E-0002", title: L("Q4 WBG pilot — partial", "Q4 WBG pilot — partial"), excerpt: L("Two of four ablation arms are complete. Do not promote the claim before the unstable arm finishes.", "Two of four ablation arms are complete. Do not promote the claim before the unstable arm finishes."), age: L("1 h ago", "1 小时前") },
 ];
 function needsPanel(items = NEEDS()) {
   return h("section", { class: "panel needs-panel" },
@@ -444,11 +445,11 @@ function taskCard([uid, imp, title, due, assignee, tags]) {
 function board(columns = ["open", "active", "review", "done"]) {
   const d = (en, cn) => L(en, cn);
   const COLS = {
-    open: [L("Open", "未开始"), "#60a5fa", [["T-0014", "P1", d("Write sweep config", "编写扫描配置"), d("Dec 3", "12月3日"), "MY", ["config"]], ["T-0016", "P2", d("Collect related work", "整理相关工作"), d("Dec 8", "12月8日"), "QP", ["writing"]]]],
-    active: [L("Active", "进行中"), "#22c55e", [["T-0013", "P0", d("Rerun baseline, 3 seeds", "重跑基线，3 个种子"), d("Nov 30", "11月30日"), "AA", ["experiment"]], ["T-0017", "P1", d("Draft method section", "撰写方法部分"), d("Dec 5", "12月5日"), "RL", ["writing"]]]],
-    review: [L("Review", "待审阅"), "#f59e0b", [["T-0012", "P1", d("Plot loss curves", "绘制损失曲线"), d("Nov 28", "11月28日"), "QP", ["figure"]]]],
-    blocked: [L("Blocked", "受阻"), "#ef4444", [["T-0015", "P1", d("Log Adam second moment", "记录 Adam 二阶矩"), d("Nov 26", "11月26日"), "AA", ["experiment"]]]],
-    done: [L("Done", "已完成"), "#14b8a6", [["T-0011", "P0", d("Run warm-up sweep", "运行预热扫描"), d("Nov 24", "11月24日"), "AA", ["experiment"]]]],
+    open: [L("Open", "未开始"), "#60a5fa", [["T-0014", "P1", d("Define the agent run contract", "Define the agent run contract"), d("Dec 3", "12月3日"), "MY", ["config"]], ["T-0016", "P2", d("Camera-ready checklist", "Camera-ready checklist"), d("Dec 8", "12月8日"), "QP", ["writing"]]]],
+    active: [L("Active", "进行中"), "#22c55e", [["T-0013", "P0", d("Run the Q4 WBG ablation on gpu-server-1", "Run the Q4 WBG ablation on gpu-server-1"), d("Nov 30", "11月30日"), "AA", ["experiment"]], ["T-0017", "P1", d("Build the paper figure suite v3", "Build the paper figure suite v3"), d("Dec 5", "12月5日"), "RL", ["writing"]]]],
+    review: [L("Review", "待审阅"), "#f59e0b", [["T-0012", "P1", d("Draft the PredActor introduction", "Draft the PredActor introduction"), d("Nov 28", "11月28日"), "QP", ["figure"]]]],
+    blocked: [L("Blocked", "受阻"), "#ef4444", [["T-0015", "P1", d("Rerun DAgger with matched checkpoints", "Rerun DAgger with matched checkpoints"), d("Nov 26", "11月26日"), "AA", ["experiment"]]]],
+    done: [L("Done", "已完成"), "#14b8a6", [["T-0011", "P0", d("Run the 390 Q1 terminal cells", "Run the 390 Q1 terminal cells"), d("Nov 24", "11月24日"), "AA", ["experiment"]]]],
   };
   return h("div", { class: "board" }, columns.map((key) => {
     const [name, color, cards] = COLS[key];
@@ -471,15 +472,15 @@ function resources() {
   const row = (tag, label) => h("div", { class: "rs-row" }, h("span", { class: "rs-tag" }, tag), h("span", null, label));
   const wrapEl = h("div", { class: "rs-graph" },
     (() => { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("class", "rs-links"); svg.setAttribute("aria-hidden", "true"); return svg; })(),
-    card("ws", "workstation", L("Machine · shared · online", "机器 · 共享 · 在线"), [row(L("REPO", "仓库"), "warmup-study"), row(L("ENV", "环境"), "conda: warmup")]),
+    card("ws", "workstation", L("Machine · shared · online", "机器 · 共享 · 在线"), [row(L("REPO", "仓库"), "predactor"), row(L("ENV", "环境"), "conda: predactor")]),
     card("ark", "lab-ark", L("ARK server · online", "ARK 服务器 · 在线"), [row(L("STORAGE", "存储"), L("Project folder · 39%", "项目文件夹 · 39%")), row(L("SESSIONS", "会话"), L("3 running · 2 mine", "3 个运行中 · 2 个属于我"))]),
     card("g1", "gpu-server-1", L("GPU server · online · 2 ours, 1 busy, 1 free", "GPU 服务器 · 在线 · 我们 2、他人 1、空闲 1"), [
-      gpu("GPU 0 · RTX 4090", 92, 20.5, 24, L("warm-up sweep", "预热扫描"), true),
-      gpu("GPU 1 · RTX 4090", 88, 16.6, 24, L("baseline", "基线"), true),
+      gpu("GPU 0 · RTX 4090", 92, 20.5, 24, "Q4 WBG ablation", true),
+      gpu("GPU 1 · RTX 4090", 88, 16.6, 24, "Q1 terminal cells", true),
       gpu("GPU 2 · RTX 4090", 64, 19.5, 24, L("other user", "其他用户"), false),
       gpu("GPU 3 · RTX 4090", 0, 0.3, 24, null, false)], "wide"),
     card("g2", "gpu-server-2", L("GPU server · online · 1 ours, 1 free", "GPU 服务器 · 在线 · 我们 1、空闲 1"), [
-      gpu("GPU 0 · A100 80GB", 90, 50.8, 80, L("LR sweep", "学习率扫描"), true),
+      gpu("GPU 0 · A100 80GB", 90, 50.8, 80, "Q3 sampler benchmark", true),
       gpu("GPU 1 · A100 80GB", 0, 0, 80, null, false)], "wide"));
   const links = [["ws", "ark", "ARK API"], ["ark", "g1", "SSH"], ["ark", "g2", "SSH"]];
   const drawLinks = () => {
@@ -507,14 +508,44 @@ function resources() {
 }
 
 // ------------------------------------------------------------ mount points
+// ARK's own Home and Board markup (see tools/snapshot_ark_views.py), laid out
+// at the app's desktop width and scaled to fit; phones get ARK's mobile layout.
+const SNAP_W = 1380;
+let SNAPSHOT = null;
+const snapshots = () => import("./ark/views-snapshot.js").then((m) => (SNAPSHOT = m.SNAPSHOT));
+async function snapshotView(el, kind) {
+  if (!SNAPSHOT) await snapshots();
+  const wrap = h("div", { class: `ark-snap snap-${kind}` });
+  let lang = null, backdrop = null;
+  const render = () => {
+    if (lang === root.lang) return;
+    lang = root.lang;
+    wrap.innerHTML = SNAPSHOT[kind][zh() ? "zh" : "en"];
+    wrap.querySelectorAll("button, a, input, summary").forEach((b) => { b.tabIndex = -1; });
+    const host = wrap.querySelector(".hero-graph");
+    if (host) {
+      backdrop = new ForceCanvas(host, { labels: false, fitPad: 14, arrows: false });
+      const g = demoGraph(); backdrop.set(g.nodes, g.edges); backdrop.settle(300); backdrop.draw();
+    }
+  };
+  const fit = () => {
+    const w = el.clientWidth, wide = window.innerWidth > 760;
+    wrap.style.width = wide ? SNAP_W + "px" : "";
+    wrap.style.zoom = wide ? String(Math.min(1, (w - 2) / SNAP_W)) : "";
+  };
+  el.replaceChildren(wrap);
+  render(); fit();
+  new ResizeObserver(fit).observe(el);
+  refreshers.add(render);
+}
+
 function mountDom(el, build) {
   const render = () => { el.replaceChildren(build()); };
   whenVisible(el, () => { render(); refreshers.add(() => { if (el.isConnected) render(); }); });
 }
 document.querySelectorAll("[data-live]").forEach((el) => {
   const kind = el.getAttribute("data-live");
-  if (kind === "home") mountDom(el, () => h("div", { class: "live-home" }, kpiTiles(), h("div", { class: "live-home-cols" }, needsPanel(), pipelinePanel())));
-  else if (kind === "board") mountDom(el, () => board(["open", "active", "review", "blocked", "done"]));
+  if (kind === "home" || kind === "board") whenVisible(el, () => snapshotView(el, kind));
   else if (kind === "board-team") mountDom(el, () => board(["active", "review", "done"]));
   else if (kind === "resources") mountDom(el, resources);
   else if (kind === "mind") whenVisible(el, () => mindCanvas(el));
@@ -584,8 +615,8 @@ function mapScene(pane) {
   let needsState = "";
   const renderNeeds = (state) => {
     needsState = state;
-    needsHost.replaceChildren(needsPanel([{ uid: "E-0001", title: L("3 seeds, no spikes with warm-up", "3 个种子，预热后无尖峰"),
-      excerpt: L("500-step warm-up: no step above 1.5x the running mean in any seed.", "500 步预热：所有种子都没有超过滑动均值 1.5 倍的步。"), age: L("just now", "刚刚"), state }]));
+    needsHost.replaceChildren(needsPanel([{ uid: "E-0001", title: L("Q1 fair benchmark — 390/390 cells", "Q1 fair benchmark — 390/390 cells"),
+      excerpt: L("Three policies × five paired seeds × four scenario families. All 390 terminal cells completed.", "Three policies × five paired seeds × four scenario families. All 390 terminal cells completed."), age: L("just now", "刚刚"), state }]));
   };
   refreshers.add(() => { renderNeeds(needsState); fc.nodes.forEach((n) => { n.title = nodeOf(n.id).title; }); fc.draw(); });
   const grow = (id) => { if (!fc.byId.has(id)) fc.add(nodeOf(id), linkFor(id)); };
@@ -634,10 +665,10 @@ function mapScene(pane) {
 
 // ---------------------------------------------- scene 2: agents in parallel
 const SESSIONS = [
-  ["CX", "Codex", "#60a5fa", "T-0013", ["Rerun baseline", "重跑基线"], ["$ python train.py --seed 1", "step 1200   loss 2.41", "step 2400   loss 2.22", "saved ckpt-2400.pt", "progress → T-0013  60%"], "T-0013"],
-  ["CL", "Claude Code", "#f97316", "T-0012", ["Plot loss curves", "绘制损失曲线"], ["read results.csv  (3 seeds)", "write plot_loss.py", "$ python plot_loss.py", "wrote loss-curves.png", "upload → T-0012  figure"], "T-0012"],
-  ["DS", "DSH", "#22d3ee", "T-0016", ["Collect related work", "整理相关工作"], ["search  learning-rate warm-up", "14 papers, 6 relevant", "link R-0001 → C-0001", "link R-0002 → C-0003", "summary → T-0016"], "R-0001"],
-  ["OC", "OpenCode", "#a3e635", "T-0014", ["Write sweep config", "编写扫描配置"], ["open configs/sweep.yaml", "warmup: [0, 250, 500]", "$ pytest tests/test_config.py", "4 passed in 1.2s", "commit  sweep config"], "X-0003"],
+  ["CX", "Codex", "#60a5fa", "T-0013", ["Run the Q4 WBG ablation", "Run the Q4 WBG ablation"], ["$ python run_q4.py --arm stable", "arm 1/4   push survival 28/30", "arm 2/4   push survival 27/30", "saved q4-arms.csv", "progress → T-0013  60%"], "T-0013"],
+  ["CL", "Claude Code", "#f97316", "T-0012", ["Build the paper figure suite v3", "Build the paper figure suite v3"], ["read q1-cells.csv  (390 cells)", "write fig2_fairness.py", "$ python fig2_fairness.py", "wrote fig2-fairness.png", "upload → T-0012  figure"], "T-0012"],
+  ["DS", "DSH", "#22d3ee", "T-0016", ["Check related work", "Check related work"], ["search  behavior-level control", "14 papers, 6 relevant", "link R-0001 → C-0001", "link R-0002 → C-0003", "summary → T-0016"], "R-0001"],
+  ["OC", "OpenCode", "#a3e635", "T-0014", ["Freeze the Q1 evaluation suite", "Freeze the Q1 evaluation suite"], ["open configs/q1-suite.yaml", "cells: 390   seeds: 5", "$ pytest tests/test_suite.py", "4 passed in 1.2s", "commit  freeze suite v1.2"], "X-0003"],
 ];
 function agentsScene(pane) {
   pane.innerHTML = "";
@@ -715,10 +746,10 @@ function agentsScene(pane) {
 
 // ------------------------------------------------------- scene 3: review
 const REVIEW = [
-  ["T-0012", ["Plot loss curves", "绘制损失曲线"], ["Curves for 3 seeds; no spike above 1.5x the mean.", "3 个种子的曲线，没有超过均值 1.5 倍的尖峰。"], "line"],
-  ["E-0002", ["Loss within 0.02 at 5k steps", "5k 步时损失差在 0.02 内"], ["2.08 with warm-up, 2.10 without.", "有预热 2.08，无预热 2.10。"], "bars"],
-  ["A-0001", ["Figure for section 4", "第 4 节配图"], ["loss-curves.png, both themes.", "loss-curves.png，浅色和深色各一版。"], "figure"],
-  ["X-0003", ["Learning-rate sweep", "学习率扫描"], ["Two of three seeds finished; one diverged.", "3 个种子完成 2 个，1 个发散。"], "diverge"],
+  ["T-0012", ["Build the paper figure suite v3", "Build the paper figure suite v3"], ["Figure 2 is the fairness table; Figure 3 is the Q2 negative result.", "Figure 2 is the fairness table; Figure 3 is the Q2 negative result."], "line"],
+  ["E-0002", ["Q2 DAgger — 2/80 vs 80/80 survival", "Q2 DAgger — 2/80 vs 80/80 survival"], ["DAgger survival was 2/80 versus 80/80 for BC.", "DAgger survival was 2/80 versus 80/80 for BC."], "bars"],
+  ["A-0001", ["Mind graph · workbench view", "Mind graph · workbench view"], ["Figure 1, light and dark.", "Figure 1, light and dark."], "figure"],
+  ["X-0003", ["Q3 sampler — 4.10× p99 speedup", "Q3 sampler — 4.10× p99 speedup"], ["DDIM-10/5/3: survival 25/30, 24/30, 25/30. The rolling variants failed.", "DDIM-10/5/3: survival 25/30, 24/30, 25/30. The rolling variants failed."], "diverge"],
 ];
 const THUMB_SVG = {
   line: '<svg viewBox="0 0 64 40"><polyline points="2,30 10,8 16,28 24,10 32,26 44,25 62,27" class="rv-l1"/><polyline points="2,33 20,31 40,29 62,29" class="rv-l2"/></svg>',
@@ -760,7 +791,7 @@ function reviewScene(pane) {
     wrapEl.querySelector(".rv-n").textContent = sel ? ` (${sel})` : "";
   };
   const set = (i, s) => { rows[i].dataset.state = s; count(); };
-  const NOTE = () => L("Rerun the diverged seed before accepting.", "先重跑发散的种子再验收。");
+  const NOTE = () => L("Rerun the failed rolling variants before accepting.", "先重跑失败的 rolling 变体再验收。");
   function settle() {
     t.clear(); render();
     set(0, "accepted"); set(1, "accepted"); set(2, "checked");
@@ -788,11 +819,11 @@ function reviewScene(pane) {
 
 // --------------------------------------------- scene 4: resources and GPUs
 const JOBS = [
-  ["J-31", "AA", "#facc15", ["warm-up sweep", "预热扫描"], 0, 2],
-  ["J-32", "QP", "#22d3ee", ["baseline seed 2", "基线种子 2"], 2, 1],
-  ["J-33", "RL", "#f472b6", ["LR sweep", "学习率扫描"], 4, 2],
-  ["J-34", "AA", "#facc15", ["second-moment probe", "二阶矩探测"], 0, 1],
-  ["J-35", "MY", "#60a5fa", ["ablation, 500 steps", "消融，500 步"], 3, 1],
+  ["J-31", "AA", "#facc15", ["Q4 WBG ablation", "Q4 WBG ablation"], 0, 2],
+  ["J-32", "QP", "#22d3ee", ["Q1 terminal cells", "Q1 terminal cells"], 2, 1],
+  ["J-33", "RL", "#f472b6", ["Q3 sampler benchmark", "Q3 sampler benchmark"], 4, 2],
+  ["J-34", "AA", "#facc15", ["Q2 DAgger rerun", "Q2 DAgger rerun"], 0, 1],
+  ["J-35", "MY", "#60a5fa", ["Q4 unstable-tracker arm", "Q4 unstable-tracker arm"], 3, 1],
 ];
 function resourcesScene(pane) {
   pane.innerHTML = "";
@@ -809,7 +840,7 @@ function resourcesScene(pane) {
     graph.replaceChildren(
       svgEl('<svg class="rq-links" aria-hidden="true"></svg>'),
       col(L("Members", "成员"), [item("m1", "user", "MY", L("owner", "负责人")), item("m2", "user", "RL", L("member", "成员")), item("m3", "user", "AA · QP", L("agents", "智能体"))]),
-      col(L("Code and data", "代码与数据"), [item("c1", "git", "warmup-study", L("repository", "仓库")), item("c2", "database", "c4-subset", L("dataset", "数据集")), item("c3", "layers", "conda: warmup", L("environment", "环境"))]),
+      col(L("Code and data", "代码与数据"), [item("c1", "git", "predactor", L("repository", "仓库")), item("c2", "database", "InfoHub dataset", L("dataset", "数据集")), item("c3", "layers", "conda: predactor", L("environment", "环境"))]),
       col(L("Machines", "机器"), [item("d1", "monitor", "workstation", L("online", "在线")), item("d2", "database", "lab-ark", L("ARK server", "ARK 服务器"))]),
       col(L("GPU servers", "GPU 服务器"), [gpus("g1", "gpu-server-1", 0, 4), gpus("g2", "gpu-server-2", 4, 2)]));
     queue.replaceChildren(h("div", { class: "rq-q-h" }, h("span", null, L("GPU queue", "GPU 队列")), h("span", { class: "rq-q-n" })),
@@ -892,11 +923,11 @@ const IH_BG = [
   [["Sim-to-real", "仿真到实机"], 6], [["Reading group", "读书会"], 5], [["Hardware notes", "硬件笔记"], 6],
 ];
 const ARK_BASE = [
-  ["q1", "question", "Does touch make grasping more reliable?", "触觉能让抓取更可靠吗？"],
-  ["c1", "claim", "Slip is detectable before it happens", "滑移可以在发生前被检测"],
-  ["x1", "experiment", "Grasp trials with gel sensors", "凝胶传感器抓取试验"],
-  ["s1", "source", "Paper feed", "论文订阅"],
-  ["c2", "claim", "Vision alone misses contact events", "仅靠视觉会漏掉接触事件"],
+  ["q1", "question", "Can one policy be both predictable and deployable?", "Can one policy be both predictable and deployable?"],
+  ["c1", "claim", "Behavior-level control reduces compounding error at long horizons", "Behavior-level control reduces compounding error at long horizons"],
+  ["x1", "experiment", "Q4 · WBG guidance ablation", "Q4 · WBG guidance ablation"],
+  ["s1", "source", "InfoHub · paper feed", "InfoHub · paper feed"],
+  ["c2", "claim", "RLOBS-DP recovers from observation noise without tracker retraining", "RLOBS-DP recovers from observation noise without tracker retraining"],
 ];
 // The InfoHub layout is deterministic, so it is computed once, in small
 // idle-time chunks after load, and reused by every build of the scene.
