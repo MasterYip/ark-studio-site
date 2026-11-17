@@ -106,35 +106,56 @@
       </div>
 
       <div class="mock-wrap">
-      <div class="frame mock" id="mock" role="img" aria-label="Animated examples of ARK Studio: a research map grows from questions to results, agents work on tasks, and results arrive for review." data-i18n-attr="aria-label:mock.aria">
+      <div class="frame mock" id="mock" role="img" aria-label="Animated tour of ARK Studio: the research map grows, agents work in parallel, results are reviewed, and GPU jobs run." data-i18n-attr="aria-label:mock.aria">
         <div class="mock-top" aria-hidden="true">
           <svg class="mock-mark" viewBox="0 0 100 100"><path d="M50 8 L95 86 H58 L50 62 Z" fill="#2563eb"/><path d="M50 8 L5 86 H42 L50 62 Z" fill="#1d4ed8"/></svg>
-          <span class="mock-proj"><i></i><span class="mock-proj-name"></span></span>
-          <span class="mock-tab" data-i18n="mock.home">Home</span>
-          <span class="mock-tab" data-i18n="mock.research">Research</span>
-          <span class="mock-tab on" data-i18n="mock.map">Map</span>
-          <span class="mock-tab" data-i18n="mock.execute">Execute</span>
-          <span class="mock-tab hide-sm" data-i18n="mock.output">Output</span>
+          <span class="mock-proj"><i></i><span data-i18n="mock.project">Warm-up study</span></span>
+          <span class="mock-tab" data-tab="home" data-i18n="mock.home">Home</span>
+          <span class="mock-tab" data-tab="research" data-i18n="mock.research">Research</span>
+          <span class="mock-tab on" data-tab="map" data-i18n="mock.map">Map</span>
+          <span class="mock-tab" data-tab="execute" data-i18n="mock.execute">Execute</span>
+          <span class="mock-tab hide-sm" data-tab="output" data-i18n="mock.output">Output</span>
           <span class="mock-sp"></span>
-          <span class="mock-live"><i></i><span class="mock-live-text"></span></span>
+          <span class="mock-live"><i></i><span data-i18n="mock.live">4 agents running</span></span>
         </div>
-        <div class="mock-body" aria-hidden="true">
+        <div class="mock-scenes">
+        <div class="mock-body scene-pane on" aria-hidden="true">
           <div class="mock-map">
             <div class="mock-map-canvas"></div>
-            <div class="mock-legend"></div>
+            <div class="mock-legend"><span style="--c:#38bdf8" data-i18n="mock.t.q">Question</span><span style="--c:#a78bfa" data-i18n="mock.t.c">Claim</span><span style="--c:#34d399" data-i18n="mock.t.e">Evidence</span><span style="--c:#2dd4bf" data-i18n="mock.t.p">Related work</span><span style="--c:#c084fc" data-i18n="mock.t.x">Experiment</span><span style="--c:#60a5fa" data-i18n="mock.t.k">Task</span></div>
             <div class="mock-needs ark-ui"></div>
           </div>
           <div class="mock-side">
             <div class="ms-head"><span data-i18n="mock.tasks">Tasks</span><span class="ms-count"><b id="mock-active">0</b> <span data-i18n="mock.active">active</span></span></div>
-            <div class="ms-list"></div>
+            <div class="ms-list">
+              <div class="ms-task" id="mt1" data-state="queued">
+                <div class="mt-row"><span class="mt-uid">T-0012</span><span class="mt-st"><i class="s-queued" data-i18n="mock.st.queued">Queued</i><i class="s-active" data-i18n="mock.st.active">Active</i><i class="s-review" data-i18n="mock.st.review">Review</i><i class="s-done" data-i18n="mock.st.done">Done</i></span></div>
+                <div class="mt-title" data-i18n="mock.task1">Run warm-up sweep</div>
+                <div class="mt-foot"><span class="mt-ag a1">A1</span><span class="mt-bar"><i></i></span></div>
+              </div>
+              <div class="ms-task" id="mt2" data-state="queued">
+                <div class="mt-row"><span class="mt-uid">T-0013</span><span class="mt-st"><i class="s-queued" data-i18n="mock.st.queued">Queued</i><i class="s-active" data-i18n="mock.st.active">Active</i><i class="s-review" data-i18n="mock.st.review">Review</i><i class="s-done" data-i18n="mock.st.done">Done</i></span></div>
+                <div class="mt-title" data-i18n="mock.task2">Rerun baseline, 3 seeds</div>
+                <div class="mt-foot"><span class="mt-ag a2">A2</span><span class="mt-bar"><i></i></span></div>
+              </div>
+              <div class="ms-task" id="mt3" data-state="queued">
+                <div class="mt-row"><span class="mt-uid">T-0014</span><span class="mt-st"><i class="s-queued" data-i18n="mock.st.queued">Queued</i><i class="s-active" data-i18n="mock.st.active">Active</i><i class="s-review" data-i18n="mock.st.review">Review</i><i class="s-done" data-i18n="mock.st.done">Done</i></span></div>
+                <div class="mt-title" data-i18n="mock.task3">Plot loss curves</div>
+                <div class="mt-foot"><span class="mt-ag a1">A1</span><span class="mt-bar"><i></i></span></div>
+              </div>
+            </div>
             <div class="ms-gpu">
-              <div class="ms-gpu-h"><span class="ms-res-name"></span><span class="ms-res-kind"></span></div>
-              <div class="ms-gpus"></div>
+              <div class="ms-gpu-h"><span>gpu-server-1</span><span>4 × GPU</span></div>
+              <div class="ms-gpus"><i id="g0"></i><i id="g1"></i><i class="busy"></i><i></i></div>
             </div>
           </div>
         </div>
+        <div class="scene-pane scene-agents" aria-hidden="true"></div>
+        <div class="scene-pane scene-review" aria-hidden="true"></div>
+        <div class="scene-pane scene-res" aria-hidden="true"></div>
+        </div>
       </div>
-      <div class="scene-nav" role="group" aria-label="Examples" data-i18n-attr="aria-label:mock.examples"></div>
+      <div class="scene-nav" role="group" aria-label="Scenes" data-i18n-attr="aria-label:mock.examples"></div>
       </div>
     </div>
   </div>

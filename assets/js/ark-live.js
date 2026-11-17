@@ -450,284 +450,392 @@ document.addEventListener("ark-live-shown", (e) => {
 });
 
 // ----------------------------------------------------------------- Hero
-// A carousel of small fictional projects. Each scene lays its map out in
-// columns (question → claims → work → results), so the structure reads at a
-// glance; nodes use ARK's node painter (drawForceNode, typeColor). Agents move
-// between nodes, tasks go queued → active → review → done and a result arrives
-// in ARK's Needs-you row. Scenes cross-fade; the dots switch them; hover or
-// focus pauses; reduced motion shows a settled frame per scene.
-const SCENES = [
-  {
-    key: "ml", name: ["Training study", "训练研究"], project: ["Warm-up study", "预热研究"],
-    cols: [["Question", "问题"], ["Claims", "论断"], ["Experiments", "实验"], ["Results", "结果"]],
-    nodes: [
-      ["Q", "question", 0, 1.5, "Does warm-up stop loss spikes?", "预热能消除损失尖峰吗？"],
-      ["C1", "claim", 1, 0.8, "Warm-up removes early spikes", "预热消除早期尖峰"],
-      ["C2", "claim", 1, 2.2, "Final loss is unchanged", "最终损失不变"],
-      ["X1", "experiment", 2, 0.8, "Warm-up sweep", "预热扫描"],
-      ["X2", "experiment", 2, 2.2, "Baseline, 3 seeds", "基线，3 个种子"],
-      ["R1", "evidence", 3, 0.8, "No spikes in 3 seeds", "3 个种子均无尖峰"],
-      ["R2", "evidence", 3, 2.2, "Loss within 0.02", "损失差在 0.02 内"],
-    ],
-    edges: [["Q", "C1"], ["Q", "C2"], ["C1", "X1"], ["C2", "X2"], ["X1", "R1"], ["X2", "R2"]],
-    agents: [["A1", "#a78bfa"], ["A2", "#f472b6"]],
-    tasks: [["T-0011", "Run warm-up sweep", "运行预热扫描", "A1", "X1", "R1"], ["T-0013", "Rerun baseline", "重跑基线", "A2", "X2", "R2"], ["T-0012", "Plot loss curves", "绘制损失曲线", "A1", null, null]],
-    res: ["gpu-server-1", ["4 GPUs", "4 块 GPU"], ["GPU 0", "GPU 1", "GPU 2", "GPU 3"]],
-    needs: ["R-0001", "No spikes in 3 seeds", "3 个种子均无尖峰", "500-step warm-up: no step above 1.5x the running mean.", "500 步预热：没有超过滑动均值 1.5 倍的步。"],
-  },
-  {
-    key: "robot", name: ["Robotics", "机器人"], project: ["Sim-to-real walking", "仿真到实机行走"],
-    cols: [["Question", "问题"], ["Claims", "论断"], ["Experiments", "实验"], ["Results", "结果"]],
-    nodes: [
-      ["Q", "question", 0, 1.5, "Does the sim policy walk on hardware?", "仿真策略能在实机上行走吗？"],
-      ["C1", "claim", 1, 0.8, "Randomized dynamics close the gap", "动力学随机化缩小差距"],
-      ["C2", "claim", 1, 2.2, "Control loop stays under 20 ms", "控制回路低于 20 ms"],
-      ["X1", "experiment", 2, 0.8, "Train in sim, 4k envs", "仿真训练，4k 环境"],
-      ["X2", "experiment", 2, 2.2, "Trial on humanoid-01", "humanoid-01 实机试验"],
-      ["R1", "evidence", 3, 0.8, "Walks 50 m, 2 falls", "行走 50 米，摔倒 2 次"],
-      ["R2", "evidence", 3, 2.2, "Loop latency 14 ms", "回路延迟 14 ms"],
-    ],
-    edges: [["Q", "C1"], ["Q", "C2"], ["C1", "X1"], ["C2", "X2"], ["X1", "R1"], ["X2", "R2"]],
-    agents: [["A1", "#a78bfa"], ["A2", "#f472b6"]],
-    tasks: [["T-0021", "Train policy in sim", "仿真训练策略", "A1", "X1", "R1"], ["T-0022", "Deploy to humanoid-01", "部署到 humanoid-01", "A2", "X2", "R2"], ["T-0023", "Record trial video", "录制试验视频", "A2", null, null]],
-    res: ["humanoid-01", ["robot · lab", "机器人 · 实验室"], ["robot", "GPU 0", "GPU 1", "camera"]],
-    needs: ["R-0021", "Hardware trial: walks 50 m", "实机试验：行走 50 米", "Two falls on the turn. Video and joint logs attached.", "转弯处摔倒两次，已附视频和关节日志。"],
-  },
-  {
-    key: "paper", name: ["Paper writing", "论文写作"], project: ["Workshop paper", "研讨会论文"],
-    cols: [["Question", "问题"], ["Claims", "论断"], ["Related work", "相关工作"], ["Sections", "章节"]],
-    nodes: [
-      ["Q", "question", 0, 1.5, "What should the paper claim?", "论文要主张什么？"],
-      ["C1", "claim", 1, 0.8, "Warm-up removes early spikes", "预热消除早期尖峰"],
-      ["C2", "claim", 1, 2.2, "It costs one extra setting", "只多一个超参数"],
-      ["W1", "related_work", 2, 0.8, "Goyal et al. 2017", "Goyal 等 2017"],
-      ["W2", "related_work", 2, 2.2, "Liu et al. 2020", "Liu 等 2020"],
-      ["S1", "production", 3, 0.8, "Introduction", "引言"],
-      ["S2", "production", 3, 2.2, "Method and results", "方法与结果"],
-    ],
-    edges: [["Q", "C1"], ["Q", "C2"], ["C1", "W1"], ["C2", "W2"], ["W1", "S1"], ["W2", "S2"]],
-    agents: [["WR", "#22d3ee"], ["RV", "#f59e0b"]],
-    tasks: [["T-0031", "Summarise related work", "整理相关工作", "WR", "W1", "S1"], ["T-0032", "Check citations", "核对引用", "RV", "W2", "S2"], ["T-0033", "Draft introduction", "撰写引言", "WR", null, null]],
-    res: ["paper repo", ["main.tex", "main.tex"], ["intro", "method", "results", "refs"]],
-    needs: ["S-0001", "Introduction draft, 2 pages", "引言初稿，2 页", "Gap, method, result in three paragraphs. 14 citations checked.", "三段写清缺口、方法和结果，已核对 14 条引用。"],
-  },
-  {
-    key: "code", name: ["Agent team", "智能体团队"], project: ["Release 2.1", "2.1 版本"],
-    cols: [["Goal", "目标"], ["Features", "功能"], ["Tasks", "任务"], ["Reviews", "审阅"]],
-    nodes: [
-      ["G", "milestone", 0, 1.5, "Ship release 2.1", "发布 2.1 版本"],
-      ["F1", "idea", 1, 0.8, "Topic canvas", "主题画布"],
-      ["F2", "idea", 1, 2.2, "Project export", "项目导出"],
-      ["T1", "task", 2, 0.8, "Canvas layout", "画布布局"],
-      ["T2", "task", 2, 2.2, "Export dialog", "导出对话框"],
-      ["V1", "evidence", 3, 0.8, "PR #212 checks pass", "PR #212 检查通过"],
-      ["V2", "evidence", 3, 2.2, "PR #214 checks pass", "PR #214 检查通过"],
-    ],
-    edges: [["G", "F1"], ["G", "F2"], ["F1", "T1"], ["F2", "T2"], ["T1", "V1"], ["T2", "V2"]],
-    agents: [["CX", "#60a5fa"], ["CL", "#f97316"]],
-    tasks: [["T-0051", "Canvas layout", "画布布局", "CX", "T1", "V1"], ["T-0052", "Export dialog", "导出对话框", "CL", "T2", "V2"], ["T-0053", "Release notes", "发布说明", "CL", null, null]],
-    res: ["ci-runner", ["4 jobs", "4 个作业"], ["lint", "unit", "e2e", "build"]],
-    needs: ["V-0212", "PR #212: canvas layout", "PR #212：画布布局", "All 46 checks pass. Screenshots of both themes attached.", "46 项检查全部通过，已附浅色和深色截图。"],
-  },
-];
+// Four moments of the product in one window, like the segments of a short
+// film: the research map growing (Force renderer), agents working in
+// parallel, the review queue, and resources with the GPU queue. Each scene
+// plays its own story and hands over to the next with a calm cross-fade. The
+// switcher under the window picks a scene; hover or focus pauses; reduced
+// motion shows a settled frame per scene; off screen nothing runs.
+const hero = document.getElementById("mock");
+const timersOf = () => { const list = []; return { add: (ms, fn) => list.push(setTimeout(fn, ms)), clear: () => { list.forEach(clearTimeout); list.length = 0; } }; };
+const svgEl = (markup) => { const t = document.createElement("template"); t.innerHTML = markup.trim(); return t.content.firstChild; };
 
-class SceneMap {
-  constructor(host) {
-    this.host = host;
-    this.canvas = h("canvas", { "aria-hidden": "true" });
-    host.append(this.canvas);
-    this.ctx = this.canvas.getContext("2d");
-    this.scene = null; this.shown = new Map(); this.links = new Map(); this.agents = {}; this.done = new Set();
-    this.pal = palette(host);
-    new ResizeObserver(() => this.resize()).observe(host);
-    refreshers.add(() => { this.pal = palette(host); this.draw(); });
-    this.resize();
-  }
-  resize() {
-    const r = this.host.getBoundingClientRect(), dpr = Math.min(2.5, window.devicePixelRatio || 1);
-    this.w = Math.max(1, r.width); this.h = Math.max(1, r.height); this.dpr = dpr;
-    this.canvas.width = Math.round(this.w * dpr); this.canvas.height = Math.round(this.h * dpr);
-    this.canvas.style.width = this.w + "px"; this.canvas.style.height = this.h + "px";
-    this.draw();
-  }
-  set(scene) { this.scene = scene; this.shown.clear(); this.links.clear(); this.agents = {}; this.done.clear(); this.draw(); }
-  // Screen position of a node: columns spread across the width, rows in the
-  // band above the Needs-you card.
-  pos(node) {
-    const cols = this.scene.cols.length, colW0 = this.w / cols, padX = Math.min(90, colW0 / 2);
-    const top = 50, bottom = this.h * (this.w > 640 ? 0.45 : 0.5);
-    const colW = (this.w - padX * 2) / (cols - 1);
-    const rowH = (this.h - top - bottom) / 3;
-    return { x: padX + node[2] * colW, y: top + node[3] * rowH, colW: Math.min(colW, padX * 2) };
-  }
-  show(id) { this.shown.set(id, performance.now()); }
-  link(a, b) { this.links.set(a + ">" + b, performance.now()); }
-  agentTo(name, id) {
-    const a = this.agents[name] || (this.agents[name] = { x: null, y: null });
-    a.to = id;
-  }
-  draw(now = performance.now(), settled = false) {
-    const { ctx, pal, scene } = this;
-    if (!ctx) return;
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    ctx.clearRect(0, 0, this.w, this.h);
-    if (!scene) return;
-    const grow = (t) => (settled || t == null ? 1 : Math.min(1, (now - t) / 420));
-    const byId = new Map(scene.nodes.map((n) => [n[0], n]));
-    // Column headings.
-    ctx.font = "700 10px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillStyle = alpha(pal.sub, 0.8);
-    scene.cols.forEach((c, i) => {
-      const p = this.pos([null, null, i, 0]);
-      ctx.fillText(L(...c).toUpperCase(), p.x, 16);
-    });
-    // Links: smooth left-to-right curves that draw in.
-    ctx.lineWidth = 1.4;
-    for (const [key, t] of this.links) {
-      const [a, b] = key.split(">"), pa = this.pos(byId.get(a)), pb = this.pos(byId.get(b)), k = grow(t);
-      const mx = (pa.x + pb.x) / 2;
-      ctx.strokeStyle = alpha(pal.sub, 0.45);
-      ctx.beginPath();
-      const steps = 24;
-      for (let i = 0; i <= steps * k; i++) {
-        const u = i / steps, v = 1 - u;
-        const x = v * v * v * pa.x + 3 * v * v * u * mx + 3 * v * u * u * mx + u * u * u * pb.x;
-        const y = v * v * v * pa.y + 3 * v * v * u * pa.y + 3 * v * u * u * pb.y + u * u * u * pb.y;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-    // Nodes with wrapped labels that stay inside their column.
-    for (const [id, t] of this.shown) {
-      const n = byId.get(id), p = this.pos(n), k = grow(t);
-      const status = this.done.has(id) ? "done" : n[1] === "question" || n[1] === "milestone" ? "active" : "open";
-      ctx.globalAlpha = k;
-      drawForceNode(ctx, { status }, p.x, p.y, 11 * (0.5 + 0.5 * k), typeColor(n[1]), pal.bg);
-      ctx.font = "600 11.5px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "top";
-      const lines = wrap(ctx, L(n[4], n[5]), Math.min(150, p.colW - 10), 2);
-      lines.forEach((line, i) => {
-        ctx.lineWidth = 3; ctx.strokeStyle = alpha(pal.bg, 0.9); ctx.lineJoin = "round";
-        ctx.strokeText(line, p.x, p.y + 16 + i * 14);
-        ctx.fillStyle = pal.ink; ctx.fillText(line, p.x, p.y + 16 + i * 14);
-      });
-      ctx.globalAlpha = 1;
-    }
-    // Agent badges glide to their node.
-    const colors = Object.fromEntries(scene.agents);
-    for (const [name, a] of Object.entries(this.agents)) {
-      if (!a.to || !this.shown.has(a.to)) continue;
-      const p = this.pos(byId.get(a.to)), tx = p.x + 13, ty = p.y - 13;
-      if (a.x == null || settled) { a.x = tx; a.y = ty; }
-      a.x += (tx - a.x) * 0.1; a.y += (ty - a.y) * 0.1;
-      ctx.beginPath(); ctx.arc(a.x, a.y, 10, 0, Math.PI * 2); ctx.fillStyle = colors[name]; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = pal.bg; ctx.stroke();
-      ctx.fillStyle = "#fff"; ctx.font = "700 8.5px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+// ------------------------------------------------ scene 1: the research map
+function mapScene(pane) {
+  const host = pane.querySelector(".mock-map-canvas");
+  const needsHost = pane.querySelector(".mock-needs");
+  const agents = { A1: { x: 0, y: 0, to: null, color: "#a78bfa", on: false }, A2: { x: 0, y: 0, to: null, color: "#f472b6", on: false } };
+  const fc = new ForceCanvas(host, { minLabelDegree: 2, fitPad: 34, insetRight: (w) => (w > 700 ? Math.min(420, w * 0.42) : 0), overlay: (ctx, view) => {
+    for (const [name, a] of Object.entries(agents)) {
+      if (!a.on || !a.to || !view.byId.get(a.to)) continue;
+      const s = view.screen(view.byId.get(a.to));
+      const tx = s.x + 13, ty = s.y - 13;
+      if (!a.placed) { a.x = tx; a.y = ty; a.placed = true; }
+      a.x += (tx - a.x) * 0.12; a.y += (ty - a.y) * 0.12;
+      ctx.beginPath(); ctx.arc(a.x, a.y, 10, 0, Math.PI * 2); ctx.fillStyle = a.color; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = view.pal.bg; ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.font = "700 9px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(name, a.x, a.y + 0.5);
     }
+  } });
+  const SEQ = ["S-0001", "Q-0001", "Q-0002", "C-0001", "R-0001", "C-0002", "C-0003", "X-0001", "R-0002", "X-0002", "T-0011", "T-0013", "E-0001", "A-0002", "E-0002", "D-0001"];
+  const byDemo = new Map(DEMO.map((d) => [d[0], d]));
+  const nodeOf = (id) => { const [, type, status, parent, en, cn] = byDemo.get(id); return { id, type, status, parent, title: L(en, cn) }; };
+  const linkFor = (id) => {
+    const d = byDemo.get(id), out = [];
+    if (d[3]) out.push({ source: id, target: d[3], relation: "part_of" });
+    for (const [a, b] of CROSS) if (a === id && fc.byId.has(b)) out.push({ source: a, target: b, relation: "supports" });
+    return out;
+  };
+  const tasks = [...pane.querySelectorAll(".ms-task")];
+  const setTask = (i, state, pct) => {
+    tasks[i].setAttribute("data-state", state);
+    if (pct != null) tasks[i].querySelector(".mt-bar i").style.width = pct + "%";
+    pane.querySelector("#mock-active").textContent = pane.querySelectorAll('.ms-task[data-state="active"]').length;
+  };
+  const gpu = (id, on) => pane.querySelector("#" + id).classList.toggle("ours", on);
+  let needsState = "";
+  const renderNeeds = (state) => {
+    needsState = state;
+    needsHost.replaceChildren(needsPanel([{ uid: "E-0001", title: L("3 seeds, no spikes with warm-up", "3 个种子，预热后无尖峰"),
+      excerpt: L("500-step warm-up: no step above 1.5x the running mean in any seed.", "500 步预热：所有种子都没有超过滑动均值 1.5 倍的步。"), age: L("just now", "刚刚"), state }]));
+  };
+  refreshers.add(() => { renderNeeds(needsState); fc.nodes.forEach((n) => { n.title = nodeOf(n.id).title; }); fc.draw(); });
+  const grow = (id) => { if (!fc.byId.has(id)) fc.add(nodeOf(id), linkFor(id)); };
+  const agentTo = (name, id) => { agents[name].on = true; agents[name].to = id; };
+  const t = timersOf();
+  function reset() {
+    fc.set([], []); fc.view = null;
+    for (const a of Object.values(agents)) { a.on = false; a.placed = false; a.to = null; }
+    tasks.forEach((_, i) => setTask(i, "queued", 0));
+    gpu("g0", false); gpu("g1", false);
+    pane.classList.remove("needs-on"); renderNeeds("");
   }
+  const STEPS = [
+    [100, () => grow("S-0001")], [600, () => grow("Q-0001")], [900, () => { grow("Q-0002"); agentTo("A1", "Q-0001"); }],
+    [1400, () => { grow("C-0001"); agentTo("A1", "C-0001"); }], [1800, () => grow("R-0001")],
+    [2200, () => { grow("C-0002"); agentTo("A2", "C-0002"); }], [2600, () => grow("C-0003")],
+    [3100, () => { grow("X-0001"); agentTo("A1", "X-0001"); setTask(0, "active", 10); gpu("g0", true); }],
+    [3500, () => grow("R-0002")],
+    [3900, () => { grow("X-0002"); agentTo("A2", "X-0002"); setTask(1, "active", 8); gpu("g1", true); }],
+    [4400, () => { grow("T-0011"); setTask(0, "active", 45); }], [4900, () => { grow("T-0013"); setTask(1, "active", 30); }],
+    [6000, () => { setTask(0, "active", 100); setTask(1, "active", 60); }],
+    [6800, () => { grow("E-0001"); grow("A-0002"); agentTo("A1", "E-0001"); setTask(0, "review", 100); gpu("g0", false); }],
+    [7300, () => { pane.classList.add("needs-on"); setTask(2, "active", 20); }],
+    [8900, () => renderNeeds("pressing")],
+    [9200, () => { renderNeeds("accepted"); setTask(0, "done", 100); grow("D-0001"); fc.byId.get("E-0001").status = "done"; }],
+    [9900, () => { grow("E-0002"); agentTo("A2", "E-0002"); setTask(1, "active", 100); setTask(2, "active", 70); }],
+    [10800, () => { pane.classList.remove("needs-on"); setTask(1, "review", 100); gpu("g1", false); }],
+  ];
+  return {
+    length: 12600,
+    play() { t.clear(); reset(); STEPS.forEach(([ms, fn]) => t.add(ms, fn)); fc.start(); },
+    stop() { t.clear(); fc.stop(); },
+    settle() {
+      t.clear(); fc.stop(); reset();
+      SEQ.forEach(grow);
+      fc.nodes.forEach((n) => { n.born = null; }); fc.edges.forEach((e) => { e.born = null; });
+      fc.settle(260); fc.fit(true);
+      agentTo("A1", "E-0001"); agentTo("A2", "X-0002");
+      setTask(0, "review", 100); setTask(1, "active", 70); setTask(2, "active", 30); gpu("g1", true);
+      pane.classList.add("needs-on");
+      fc.draw();
+    },
+    resize() { fc.resize(); fc.view = null; fc.draw(); },
+  };
 }
 
-const hero = document.getElementById("mock");
-if (hero) {
-  const map = new SceneMap(hero.querySelector(".mock-map-canvas"));
-  const needsHost = hero.querySelector(".mock-needs");
-  const list = hero.querySelector(".ms-list");
-  const nav = document.querySelector(".scene-nav");
-  let index = 0, scene = SCENES[0], timers = [], frame = 0, running = false, paused = false, visible = true;
-  const st = (en, cn) => h("i", { class: "s-" + en.toLowerCase() }, L(en, cn));
-  function renderSide() {
-    hero.querySelector(".mock-proj-name").textContent = L(...scene.project);
-    hero.querySelector(".mock-live-text").textContent = L(`${scene.agents.length} agents running`, `${scene.agents.length} 个智能体运行中`);
-    hero.querySelector(".mock-legend").replaceChildren(...[...new Set(scene.nodes.map((n) => n[1]))]
-      .map((type) => h("span", { style: `--c:${typeColor(type)}` }, L(...TYPES[type] || [type, type]))));
-    const colors = Object.fromEntries(scene.agents);
-    list.replaceChildren(...scene.tasks.map(([uid, en, cn, ag]) => h("div", { class: "ms-task", "data-state": "queued" },
-      h("div", { class: "mt-row" }, h("span", { class: "mt-uid" }, uid),
-        h("span", { class: "mt-st" }, st("Queued", "排队"), st("Active", "进行中"), st("Review", "待审阅"), st("Done", "已完成"))),
-      h("div", { class: "mt-title" }, L(en, cn)),
-      h("div", { class: "mt-foot" }, h("span", { class: "mt-ag", style: `background:${colors[ag]}` }, ag), h("span", { class: "mt-bar" }, h("i"))))));
-    hero.querySelector(".ms-res-name").textContent = scene.res[0];
-    hero.querySelector(".ms-res-kind").textContent = L(...scene.res[1]);
-    hero.querySelector(".ms-gpus").replaceChildren(...scene.res[2].map((label) => h("i", { title: label })));
-    renderNeeds("");
+// ---------------------------------------------- scene 2: agents in parallel
+const SESSIONS = [
+  ["CX", "Codex", "#60a5fa", "T-0013", ["Rerun baseline", "重跑基线"], ["$ python train.py --seed 1", "step 1200   loss 2.41", "step 2400   loss 2.22", "saved ckpt-2400.pt", "progress → T-0013  60%"], "T-0013"],
+  ["CL", "Claude Code", "#f97316", "T-0012", ["Plot loss curves", "绘制损失曲线"], ["read results.csv  (3 seeds)", "write plot_loss.py", "$ python plot_loss.py", "wrote loss-curves.png", "upload → T-0012  figure"], "T-0012"],
+  ["DS", "DSH", "#22d3ee", "T-0016", ["Collect related work", "整理相关工作"], ["search  learning-rate warm-up", "14 papers, 6 relevant", "link R-0001 → C-0001", "link R-0002 → C-0003", "summary → T-0016"], "R-0001"],
+  ["OC", "OpenCode", "#a3e635", "T-0014", ["Write sweep config", "编写扫描配置"], ["open configs/sweep.yaml", "warmup: [0, 250, 500]", "$ pytest tests/test_config.py", "4 passed in 1.2s", "commit  sweep config"], "X-0003"],
+];
+function agentsScene(pane) {
+  pane.innerHTML = "";
+  const grid = h("div", { class: "ag-grid" });
+  const side = h("div", { class: "ag-side" }, h("div", { class: "ag-side-h" }), h("div", { class: "ag-mini" }));
+  pane.append(grid, side);
+  const presence = {};
+  const fc = new ForceCanvas(side.querySelector(".ag-mini"), { labels: false, fitPad: 22, overlay: (ctx, view) => {
+    for (const [name, p] of Object.entries(presence)) {
+      const n = view.byId.get(p.to);
+      if (!n) continue;
+      const s = view.screen(n), tx = s.x + 9, ty = s.y - 9;
+      if (p.x == null) { p.x = tx; p.y = ty; }
+      p.x += (tx - p.x) * 0.1; p.y += (ty - p.y) * 0.1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = view.pal.bg; ctx.stroke();
+      ctx.fillStyle = "#0b1017"; ctx.font = "700 7.5px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(name, p.x, p.y + 0.5);
+    }
+  } });
+  const g = demoGraph(); fc.set(g.nodes, g.edges); fc.settle(300);
+  const cards = [];
+  function render() {
+    side.querySelector(".ag-side-h").textContent = L("On the map", "在地图上");
+    grid.replaceChildren(...SESSIONS.map(([badge, name, color, uid, title]) => {
+      const card = h("div", { class: "ag-card", "data-state": "queued" },
+        h("div", { class: "ag-head" }, h("span", { class: "ag-badge", style: `background:${color}` }, badge),
+          h("div", { class: "ag-who" }, h("b", null, name), h("span", null, `${uid} · ${L(...title)}`)),
+          h("span", { class: "ag-chip" }, h("i", { class: "c-queued" }, L("Queued", "排队")), h("i", { class: "c-active" }, L("Running", "运行中")), h("i", { class: "c-review" }, L("Review", "待审阅")))),
+        h("div", { class: "ag-log" }), h("div", { class: "ag-bar" }, h("i")));
+      return card;
+    }));
+    cards.length = 0; cards.push(...grid.children);
   }
-  function renderNeeds(state) {
-    const [uid, en, cn, xen, xcn] = scene.needs;
-    needsHost.replaceChildren(needsPanel([{ uid, title: L(en, cn), excerpt: L(xen, xcn), age: L("just now", "刚刚"), state }]));
-  }
-  function setTask(i, state, pct) {
-    const t = list.children[i];
-    if (!t) return;
-    t.setAttribute("data-state", state);
-    if (pct != null) t.querySelector(".mt-bar i").style.width = pct + "%";
-    hero.querySelector("#mock-active").textContent = list.querySelectorAll('.ms-task[data-state="active"]').length;
-  }
-  const cell = (i, on) => hero.querySelectorAll(".ms-gpus i")[i]?.classList.toggle("ours", on);
-  function renderNav() {
-    nav.replaceChildren(...SCENES.map((s, i) => h("button", { type: "button", class: "scene-dot", "aria-pressed": String(i === index),
-      "aria-label": L(...s.name) }, h("i"), h("span", null, L(...s.name)))));
-    [...nav.children].forEach((b, i) => b.addEventListener("click", () => go(i, true)));
-  }
-  // The story of one scene, as [ms, action] steps.
-  function steps() {
-    const [t1, t2] = scene.tasks, [a1, a2] = scene.agents.map((a) => a[0]);
-    const S = [];
-    const at = (ms, fn) => S.push([ms, fn]);
-    at(150, () => map.show(scene.nodes[0][0]));
-    at(700, () => { map.show(scene.nodes[1][0]); map.link(scene.nodes[0][0], scene.nodes[1][0]); map.agentTo(a1, scene.nodes[1][0]); });
-    at(1100, () => { map.show(scene.nodes[2][0]); map.link(scene.nodes[0][0], scene.nodes[2][0]); map.agentTo(a2, scene.nodes[2][0]); });
-    at(1800, () => { map.show(t1[4]); map.link(scene.nodes[1][0], t1[4]); map.agentTo(a1, t1[4]); setTask(0, "active", 15); cell(0, true); });
-    at(2300, () => { map.show(t2[4]); map.link(scene.nodes[2][0], t2[4]); map.agentTo(a2, t2[4]); setTask(1, "active", 10); cell(1, true); });
-    at(3300, () => { setTask(0, "active", 70); setTask(1, "active", 45); });
-    at(4600, () => { setTask(0, "review", 100); map.show(t1[5]); map.link(t1[4], t1[5]); map.agentTo(a1, t1[5]); cell(0, false); });
-    at(5100, () => { hero.classList.add("needs-on"); setTask(2, "active", 20); });
-    at(6500, () => renderNeeds("pressing"));
-    at(6800, () => { renderNeeds("accepted"); setTask(0, "done", 100); map.done.add(t1[5]); });
-    at(7400, () => { setTask(1, "active", 100); setTask(2, "active", 60); });
-    at(8200, () => { hero.classList.remove("needs-on"); setTask(1, "review", 100); map.show(t2[5]); map.link(t2[4], t2[5]); map.agentTo(a2, t2[5]); cell(1, false); });
-    at(10200, () => go(index + 1));
-    return S;
-  }
+  render();
+  refreshers.add(() => { render(); if (!running) settle(); });
+  const t = timersOf();
+  let running = false;
+  const line = (i, text) => {
+    const log = cards[i].querySelector(".ag-log");
+    log.append(h("div", { class: "ag-line" }, text));
+    while (log.children.length > 4) log.firstChild.remove();
+  };
+  const state = (i, s, pct) => { cards[i].setAttribute("data-state", s); if (pct != null) cards[i].querySelector(".ag-bar i").style.width = pct + "%"; };
+  const moveTo = (i, id) => { const [badge, , color] = SESSIONS[i]; presence[badge] = Object.assign(presence[badge] || { x: null }, { to: id, color }); };
+  const ROUTE = { 0: ["X-0002", "T-0013", "E-0002"], 1: ["T-0012", "A-0001", "E-0001"], 2: ["R-0001", "R-0002", "R-0003"], 3: ["X-0003", "T-0014", "X-0003"] };
   function settle() {
-    for (const [ms, fn] of steps()) if (ms < 10200 && ms !== 6500) fn();
-    hero.classList.add("needs-on");
-    renderNeeds("");
-    map.draw(performance.now(), true);
+    t.clear(); fc.stop();
+    SESSIONS.forEach(([, , , , , lines], i) => {
+      cards[i].querySelector(".ag-log").replaceChildren();
+      lines.slice(0, 4).forEach((l) => line(i, l));
+      state(i, i === 1 ? "review" : "active", [60, 100, 70, 45][i]);
+      moveTo(i, ROUTE[i][1]); presence[SESSIONS[i][0]].x = null;
+    });
+    fc.draw();
   }
-  const clear = () => { timers.forEach(clearTimeout); timers = []; };
-  function loop() { map.draw(); frame = requestAnimationFrame(loop); }
-  function play() {
-    clear();
-    hero.classList.remove("needs-on");
-    for (const [ms, fn] of steps()) timers.push(setTimeout(fn, ms));
+  return {
+    length: 10400,
+    play() {
+      running = true; t.clear();
+      SESSIONS.forEach(([, , , , , lines], i) => {
+        cards[i].querySelector(".ag-log").replaceChildren(); state(i, "queued", 0); moveTo(i, ROUTE[i][0]);
+        const start = 250 + i * 380;
+        t.add(start, () => state(i, "active", 6));
+        lines.forEach((l, k) => t.add(start + 500 + k * (1300 + i * 120), () => { line(i, l); state(i, "active", Math.min(100, 20 + k * 20)); if (k % 2) moveTo(i, ROUTE[i][Math.min(2, (k + 1) >> 1)]); }));
+      });
+      t.add(8200, () => state(1, "review", 100));
+      fc.start();
+    },
+    stop() { running = false; t.clear(); fc.stop(); },
+    settle() { running = false; settle(); },
+    resize() { fc.resize(); fc.view = null; fc.draw(); },
+  };
+}
+
+// ------------------------------------------------------- scene 3: review
+const REVIEW = [
+  ["T-0012", ["Plot loss curves", "绘制损失曲线"], ["Curves for 3 seeds; no spike above 1.5x the mean.", "3 个种子的曲线，没有超过均值 1.5 倍的尖峰。"], "line"],
+  ["E-0002", ["Loss within 0.02 at 5k steps", "5k 步时损失差在 0.02 内"], ["2.08 with warm-up, 2.10 without.", "有预热 2.08，无预热 2.10。"], "bars"],
+  ["A-0001", ["Figure for section 4", "第 4 节配图"], ["loss-curves.png, both themes.", "loss-curves.png，浅色和深色各一版。"], "figure"],
+  ["X-0003", ["Learning-rate sweep", "学习率扫描"], ["Two of three seeds finished; one diverged.", "3 个种子完成 2 个，1 个发散。"], "diverge"],
+];
+const THUMB_SVG = {
+  line: '<svg viewBox="0 0 64 40"><polyline points="2,30 10,8 16,28 24,10 32,26 44,25 62,27" class="rv-l1"/><polyline points="2,33 20,31 40,29 62,29" class="rv-l2"/></svg>',
+  bars: '<svg viewBox="0 0 64 40"><rect x="8" y="12" width="14" height="24" class="rv-b1"/><rect x="28" y="13" width="14" height="23" class="rv-b2"/><path d="M4 36H60" class="rv-ax"/></svg>',
+  figure: '<svg viewBox="0 0 64 40"><rect x="3" y="3" width="58" height="34" rx="3" class="rv-fig"/><polyline points="8,30 18,18 26,24 38,10 56,14" class="rv-l1"/></svg>',
+  diverge: '<svg viewBox="0 0 64 40"><polyline points="2,30 20,26 40,24 62,22" class="rv-l2"/><polyline points="2,31 20,27 34,20 46,9 54,3" class="rv-bad"/></svg>',
+};
+function reviewScene(pane) {
+  pane.innerHTML = "";
+  const wrapEl = h("div", { class: "rv ark-ui" });
+  pane.append(wrapEl);
+  let rows = [], note, typed = "";
+  function render() {
+    const head = h("div", { class: "rv-head" },
+      h("h3", null, L("Needs you", "需要你处理"), h("span", { class: "needs-count rv-count" }, "4")),
+      h("label", { class: "rv-all" }, h("span", { class: "rv-box" }), L("Select all", "全选")),
+      h("span", { class: "btn sm primary rv-bulk" }, icon("check", "sm"), h("span", { class: "rv-bulk-t" }, L("Accept selected", "验收所选")), h("b", { class: "rv-n" }, "")));
+    rows = REVIEW.map(([uid, title, excerpt, thumb]) => h("div", { class: "rv-row", "data-state": "" },
+      h("span", { class: "rv-box" }),
+      h("span", { class: "rv-thumb" }, svgEl(THUMB_SVG[thumb])),
+      h("div", { class: "rv-main" },
+        h("div", { class: "rv-line" }, h("span", { class: "needs-chip kind-review" }, L("Accept", "验收")), h("span", { class: "needs-uid" }, uid), h("b", null, L(...title))),
+        h("div", { class: "rv-ex" }, L(...excerpt)),
+        h("div", { class: "rv-note" }, h("span", { class: "rv-note-t" }), h("i", { class: "rv-caret" }))),
+      h("div", { class: "rv-act" },
+        h("span", { class: "rv-res rv-acc" }, icon("check", "sm"), L("Accepted", "已验收")),
+        h("span", { class: "rv-res rv-back" }, L("Sent back", "已退回")),
+        h("span", { class: "btn sm ghost rv-sb" }, L("Send back", "退回")))));
+    wrapEl.replaceChildren(head, h("div", { class: "rv-list" }, rows));
+    note = rows[3].querySelector(".rv-note-t");
   }
-  function go(i, manual = false) {
+  render();
+  const t = timersOf();
+  let running = false;
+  const count = () => {
+    const open = rows.filter((r) => !/accepted|back/.test(r.dataset.state)).length;
+    const sel = rows.filter((r) => r.dataset.state === "checked").length;
+    wrapEl.querySelector(".rv-count").textContent = String(open);
+    wrapEl.querySelector(".rv-n").textContent = sel ? ` (${sel})` : "";
+  };
+  const set = (i, s) => { rows[i].dataset.state = s; count(); };
+  const NOTE = () => L("Rerun the diverged seed before accepting.", "先重跑发散的种子再验收。");
+  function settle() {
+    t.clear(); render();
+    set(0, "accepted"); set(1, "accepted"); set(2, "checked");
+    rows[3].dataset.state = "noting"; note.textContent = NOTE(); count();
+  }
+  refreshers.add(() => { render(); count(); if (!running) settle(); });
+  return {
+    length: 9800,
+    play() {
+      running = true; t.clear(); render(); count();
+      [700, 1200, 1700].forEach((ms, i) => t.add(ms, () => set(i, "checked")));
+      t.add(2600, () => wrapEl.querySelector(".rv-bulk").classList.add("pressing"));
+      t.add(2900, () => { wrapEl.querySelector(".rv-bulk").classList.remove("pressing"); [0, 1, 2].forEach((i) => t.add(i * 260, () => set(i, "accepted"))); });
+      t.add(4300, () => rows[3].querySelector(".rv-sb").classList.add("pressing"));
+      t.add(4600, () => { rows[3].querySelector(".rv-sb").classList.remove("pressing"); set(3, "noting"); typed = ""; });
+      const text = NOTE();
+      [...text].forEach((ch, k) => t.add(4900 + k * 55, () => { typed += ch; note.textContent = typed; }));
+      t.add(4900 + text.length * 55 + 700, () => set(3, "back"));
+    },
+    stop() { running = false; t.clear(); },
+    settle() { running = false; settle(); },
+    resize() {},
+  };
+}
+
+// --------------------------------------------- scene 4: resources and GPUs
+const JOBS = [
+  ["J-31", "AA", "#facc15", ["warm-up sweep", "预热扫描"], 0, 2],
+  ["J-32", "QP", "#22d3ee", ["baseline seed 2", "基线种子 2"], 2, 1],
+  ["J-33", "RL", "#f472b6", ["LR sweep", "学习率扫描"], 4, 2],
+  ["J-34", "AA", "#facc15", ["second-moment probe", "二阶矩探测"], 0, 1],
+  ["J-35", "MY", "#60a5fa", ["ablation, 500 steps", "消融，500 步"], 3, 1],
+];
+function resourcesScene(pane) {
+  pane.innerHTML = "";
+  const graph = h("div", { class: "rq-graph" });
+  const queue = h("div", { class: "rq-queue" });
+  pane.append(graph, queue);
+  const cells = Array.from({ length: 6 }, () => null);
+  let jobs = [];
+  function render() {
+    const col = (title, items) => h("div", { class: "rq-col" }, h("div", { class: "rq-col-h" }, title), ...items);
+    const item = (key, ic, label, sub) => h("div", { class: "rq-item", "data-k": key }, icon(ic, "sm"), h("div", null, h("b", null, label), sub ? h("span", null, sub) : null));
+    const gpus = (key, label, from, n) => h("div", { class: "rq-item rq-gpu", "data-k": key }, icon("cpu", "sm"),
+      h("div", null, h("b", null, label), h("span", { class: "rq-cells" }, Array.from({ length: n }, (_, k) => h("i", { "data-cell": String(from + k) })))));
+    graph.replaceChildren(
+      svgEl('<svg class="rq-links" aria-hidden="true"></svg>'),
+      col(L("Members", "成员"), [item("m1", "user", "MY", L("owner", "负责人")), item("m2", "user", "RL", L("member", "成员")), item("m3", "user", "AA · QP", L("agents", "智能体"))]),
+      col(L("Code and data", "代码与数据"), [item("c1", "git", "warmup-study", L("repository", "仓库")), item("c2", "database", "c4-subset", L("dataset", "数据集")), item("c3", "layers", "conda: warmup", L("environment", "环境"))]),
+      col(L("Machines", "机器"), [item("d1", "monitor", "workstation", L("online", "在线")), item("d2", "database", "lab-ark", L("ARK server", "ARK 服务器"))]),
+      col(L("GPU servers", "GPU 服务器"), [gpus("g1", "gpu-server-1", 0, 4), gpus("g2", "gpu-server-2", 4, 2)]));
+    queue.replaceChildren(h("div", { class: "rq-q-h" }, h("span", null, L("GPU queue", "GPU 队列")), h("span", { class: "rq-q-n" })),
+      h("div", { class: "rq-list" }, JOBS.map(([id, who, color, title]) => h("div", { class: "rq-job", "data-state": "queued", "data-id": id },
+        h("span", { class: "mt-ag", style: `background:${color}` }, who),
+        h("div", { class: "rq-job-m" }, h("b", null, L(...title)), h("span", null, id)),
+        h("span", { class: "rq-st" }, h("i", { class: "s-q" }, L("Queued", "排队")), h("i", { class: "s-r" }, L("Running", "运行中")), h("i", { class: "s-d" }, L("Done", "完成")))))));
+    jobs = [...queue.querySelectorAll(".rq-job")];
+    paintCells(); requestAnimationFrame(links);
+  }
+  function links() {
+    const svg = graph.querySelector(".rq-links"), box = graph.getBoundingClientRect();
+    if (!box.width) return;
+    svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`); svg.innerHTML = "";
+    const pairs = [["m1", "c1"], ["m2", "c1"], ["m3", "c2"], ["c1", "d1"], ["c2", "d2"], ["c3", "d1"], ["d2", "g1"], ["d2", "g2"], ["c3", "g1"]];
+    for (const [a, b] of pairs) {
+      const ra = graph.querySelector(`[data-k="${a}"]`).getBoundingClientRect(), rb = graph.querySelector(`[data-k="${b}"]`).getBoundingClientRect();
+      const x1 = ra.right - box.left, y1 = ra.top + ra.height / 2 - box.top, x2 = rb.left - box.left, y2 = rb.top + rb.height / 2 - box.top, mx = (x1 + x2) / 2;
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`);
+      svg.append(p);
+    }
+  }
+  new ResizeObserver(links).observe(graph);
+  function paintCells() {
+    graph.querySelectorAll("[data-cell]").forEach((c) => {
+      const owner = cells[+c.dataset.cell];
+      c.style.background = owner ? owner : "";
+      c.classList.toggle("on", !!owner);
+    });
+    const running = jobs.filter((j) => j.dataset.state === "running").length, queued = jobs.filter((j) => j.dataset.state === "queued").length;
+    const n = queue.querySelector(".rq-q-n");
+    if (n) n.textContent = L(`${running} running · ${queued} queued`, `${running} 个运行 · ${queued} 个排队`);
+  }
+  const jobState = (i, s) => {
+    const [, , color, , from, n] = JOBS[i];
+    jobs[i].dataset.state = s;
+    for (let k = 0; k < n; k++) cells[from + k] = s === "running" ? color : null;
+    paintCells();
+  };
+  const t = timersOf();
+  let running = false;
+  function settle() {
+    t.clear(); cells.fill(null); render();
+    jobState(0, "done"); jobState(1, "running"); jobState(2, "running"); jobState(3, "running"); jobState(4, "queued");
+  }
+  refreshers.add(() => { render(); if (!running) settle(); });
+  render();
+  return {
+    length: 9800,
+    play() {
+      running = true; t.clear(); cells.fill(null); render();
+      t.add(500, () => jobState(0, "running")); t.add(1100, () => jobState(1, "running")); t.add(1700, () => jobState(2, "running"));
+      t.add(3800, () => jobState(0, "done")); t.add(4300, () => jobState(3, "running"));
+      t.add(6000, () => jobState(1, "done")); t.add(6500, () => jobState(4, "running"));
+      t.add(8200, () => jobState(2, "done"));
+    },
+    stop() { running = false; t.clear(); },
+    settle() { running = false; settle(); },
+    resize() { links(); },
+  };
+}
+
+// ---------------------------------------------------------- the player
+if (hero) {
+  const SCENES = [
+    { key: "map", tab: "map", name: ["Research map", "研究地图"], build: mapScene },
+    { key: "agents", tab: "execute", name: ["Agents in parallel", "智能体并行"], build: agentsScene },
+    { key: "review", tab: "home", name: ["Review", "审阅"], build: reviewScene },
+    { key: "resources", tab: "execute", name: ["Resources and GPUs", "资源与算力"], build: resourcesScene },
+  ];
+  const panes = [...hero.querySelectorAll(".scene-pane")];
+  const nav = document.querySelector(".scene-nav");
+  const built = [];
+  const sceneAt = (i) => built[i] || (built[i] = SCENES[i].build(panes[i]));
+  let index = 0, running = false, paused = false, visible = true;
+  const t = timersOf();
+  function renderNav() {
+    nav.replaceChildren(...SCENES.map((s, i) => h("button", { type: "button", class: "scene-dot", "aria-pressed": String(i === index) }, h("i"), h("span", null, L(...s.name)))));
+    [...nav.children].forEach((b, i) => b.addEventListener("click", () => show(i, true)));
+  }
+  function tabs() {
+    hero.querySelectorAll(".mock-tab").forEach((tab) => tab.classList.toggle("on", tab.dataset.tab === SCENES[index].tab));
+  }
+  function startCurrent() {
+    t.clear();
+    const s = sceneAt(index);
+    if (running) { s.play(); t.add(s.length, () => show(index + 1)); } else s.settle();
+  }
+  function show(i, manual = false) {
+    const prev = index;
     index = (i + SCENES.length) % SCENES.length;
-    const switchTo = () => {
-      scene = SCENES[index]; map.set(scene); renderSide(); renderNav();
-      if (reduceMotion() || paused || !running) settle(); else play();
-      hero.classList.remove("switching");
-    };
-    clear();
-    if (reduceMotion() || manual && !running) { switchTo(); return; }
-    hero.classList.add("switching");
-    timers.push(setTimeout(switchTo, 450));
+    if (built[prev] && prev !== index) built[prev].stop();
+    panes.forEach((p, k) => p.classList.toggle("on", k === index));
+    sceneAt(index).resize();
+    renderNav(); tabs();
+    startCurrent();
+    if (manual && !running) sceneAt(index).settle();
   }
   function update() {
-    const go_ = visible && !document.hidden && !reduceMotion() && !paused;
-    if (go_ && !running) { running = true; hero.classList.remove("static"); map.set(scene); renderSide(); play(); loop(); }
-    else if (!go_ && running) { running = false; clear(); cancelAnimationFrame(frame); map.set(scene); renderSide(); settle(); }
+    const go = visible && !document.hidden && !reduceMotion() && !paused;
+    if (go && !running) { running = true; hero.classList.remove("static"); startCurrent(); }
+    else if (!go && running) { running = false; t.clear(); sceneAt(index).stop(); sceneAt(index).settle(); }
   }
   const wrapEl = hero.closest(".mock-wrap");
   wrapEl.addEventListener("mouseenter", () => { paused = true; update(); });
   wrapEl.addEventListener("mouseleave", () => { paused = false; update(); });
   wrapEl.addEventListener("focusin", () => { paused = true; update(); });
   wrapEl.addEventListener("focusout", (e) => { if (!wrapEl.contains(e.relatedTarget)) { paused = false; update(); } });
-  refreshers.add(() => { renderSide(); renderNav(); if (!running) settle(); });
+  refreshers.add(renderNav);
   if ("IntersectionObserver" in window) new IntersectionObserver((e) => { visible = e[0].isIntersecting; update(); }, { threshold: 0.1 }).observe(hero);
   document.addEventListener("visibilitychange", update);
-  map.set(scene); renderSide(); renderNav(); settle();
+  show(0);
   if (reduceMotion()) hero.classList.add("static");
   update();
 }

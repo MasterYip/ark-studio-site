@@ -48,11 +48,14 @@ The hero, the pillar visuals and the preview tabs are built in the page, not
 screenshots. `ark-live.js` renders a fixed, fictional demo project (a
 learning-rate warm-up study) with ARK's own code:
 
-* Hero: four example projects (training study, sim-to-real robotics, paper
-  writing, an agent team) laid out in columns from question to results and
-  drawn with ARK's node painter (`drawForceNode`, `typeColor`). Each plays a
-  short story, then cross-fades to the next; the scene switcher under the
-  window picks one, hover or focus pauses.
+* Hero: four scenes in one window, like segments of a short film, each
+  with its own composition: the research map growing on ARK's Force
+  renderer with agents, tasks, the GPU strip and an accept in Needs you;
+  agents in parallel (Codex, Claude Code, DSH and OpenCode sessions with
+  streaming logs, their presence on a small map); the review queue (select,
+  bulk accept, send back with a note); and resources with the GPU queue
+  (members, code and data, machines, GPU servers, jobs queued, running and
+  done). The switcher under the window picks a scene; hover or focus pauses.
 * Map tab: ARK's Force physics and node painter (`ark/graph-core.js`,
   `stepForce`, `drawForceNode`, arrowheads) on a canvas.
 * Feature thumbnails: small SVGs built from the same pieces (node glyphs in
