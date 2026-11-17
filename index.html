@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARK Studio · Research workbench for people and agents</title>
+<meta name="description" content="Human-in-the-loop auto research on a fact graph: ideas grow into a research map and running experiments, agents work in parallel, you review and accept. Codebases, machines and GPUs in one context, built for teams. Desktop, mobile and a self-hosted Go server. Open source, MIT.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f141c" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="ARK Studio">
+<meta property="og:description" content="Claims, evidence, experiments and tasks in one graph. Agents do the work, you review and accept.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/img/shots/home-light.webp">
+<link rel="icon" href="assets/img/ark-mark.svg" type="image/svg+xml">
+<link rel="icon" href="assets/img/ark.ico" sizes="any">
+<link rel="apple-touch-icon" href="assets/img/icon-180.png">
+<link rel="stylesheet" href="assets/css/site.css">
+<script>
+  // Theme and language before first paint: stored choice, else the system.
+  (function () {
+    var d = document.documentElement, s = {};
+    try { s.t = localStorage.getItem("ark-site.theme"); s.l = localStorage.getItem("ark-site.lang"); } catch (e) {}
+    var q = new URLSearchParams(location.search).get("lang");
+    var dark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
+    d.setAttribute("data-theme", s.t === "light" || s.t === "dark" ? s.t : (dark ? "dark" : "light"));
+    var l = q || s.l || ((navigator.language || "").toLowerCase().indexOf("zh") === 0 ? "zh" : "en");
+    d.lang = l === "zh" ? "zh-CN" : "en";
+  })();
+</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="12" cy="10" r="2"/><path d="M6.7 7.1 10.3 9M17.3 7.1 13.7 9M12 12v4"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 13v1M15 13v1M2 14h2M20 14h2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-gpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v4"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="11" rx="2"/><path d="M2 19h20"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m6 9 4 3-4 3M12 15h6"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="ARK Studio">
+      <img class="only-light" src="assets/img/ark-lockup-loading.svg" alt="ARK Studio" width="141" height="30">
+      <img class="only-dark" src="assets/img/ark-lockup-loading-dark.svg" alt="ARK Studio" width="141" height="30">
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#why" data-i18n="nav.why">Why ARK</a>
+      <a href="#how" data-i18n="nav.how">How it works</a>
+      <a href="#features" data-i18n="nav.features">Features</a>
+      <a href="#screenshots" data-i18n="nav.shots">Screenshots</a>
+      <a href="#download" data-i18n="nav.download">Download</a>
+      <a href="#self-host" data-i18n="nav.selfhost">Self-host</a>
+      <a href="#docs" data-i18n="nav.docs">Docs</a>
+    </nav>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="zh" aria-pressed="false">中文</button>
+      </div>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark theme" data-i18n-attr="aria-label:theme.toggle">
+        <svg class="only-light"><use href="#i-moon"/></svg>
+        <svg class="only-dark"><use href="#i-sun"/></svg>
+      </button>
+      <a class="gh-link" href="https://github.com/MasterYip/ARK-Studio"><svg><use href="#i-code"/></svg><span>GitHub</span></a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <img class="hero-logo only-light" src="assets/img/ark-lockup-loading.svg" alt="ARK Studio" width="296" height="64">
+        <img class="hero-logo only-dark" src="assets/img/ark-lockup-loading-dark.svg" alt="ARK Studio" width="296" height="64">
+        <span class="eyebrow" data-i18n="hero.eyebrow">Auto-Research Kit · open source</span>
+        <h1 data-i18n="hero.title">Your agents do the research.<br><span class="accent">You review and accept.</span></h1>
+        <p class="lead" data-i18n="hero.lead">Human-in-the-loop auto research on a fact graph. Ideas grow into a research map and then into running experiments, with agents working in parallel, so one person can lead a whole agent team.</p>
+        <div class="cta">
+          <a class="btn btn-primary" id="hero-download" href="#download">
+            <svg><use href="#i-download"/></svg><span id="hero-download-label" data-i18n="hero.download">Download</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/MasterYip/ARK-Studio"><svg><use href="#i-code"/></svg><span data-i18n="hero.github">View on GitHub</span></a>
+        </div>
+        <p class="cta-note"><span data-i18n="hero.note">Windows, macOS, Linux and Android. Free under the MIT license.</span> <a href="#download" data-i18n="hero.all">All downloads</a></p>
+        <div class="agents-row">
+          <span data-i18n="hero.works">Works with</span>
+          <span class="chip">Claude Code</span><span class="chip">Codex</span><span class="chip">DSH</span><span class="chip">OpenCode</span>
+          <span class="chip" data-i18n="hero.http">any HTTP client</span>
+        </div>
+      </div>
+
+      <div class="frame" aria-label="ARK Studio screenshots">
+        <div class="frame-bar"><i></i><i></i><i></i><span>ARK Studio</span></div>
+        <div class="reel">
+          <figure>
+            <img class="only-light only-en" src="assets/img/shots/home-light.webp" alt="Home: project pulse, items waiting for review, research pipeline" width="1440" height="900">
+            <img class="only-dark only-en" src="assets/img/shots/home-dark.webp" alt="Home: project pulse, items waiting for review, research pipeline" width="1440" height="900">
+            <img class="only-light only-zh" src="assets/img/shots/home-zh-light.webp" alt="首页：项目动态、待审阅事项和研究流水线" width="1440" height="900">
+            <img class="only-dark only-zh" src="assets/img/shots/home-zh-dark.webp" alt="首页：项目动态、待审阅事项和研究流水线" width="1440" height="900">
+          </figure>
+          <figure>
+            <img class="only-light" src="assets/img/shots/map-force-light.webp" alt="Research map with the node inspector" width="1440" height="900" loading="lazy">
+            <img class="only-dark" src="assets/img/shots/map-force-dark.webp" alt="Research map with the node inspector" width="1440" height="900" loading="lazy">
+          </figure>
+          <figure>
+            <img class="only-light" src="assets/img/shots/topic-story-light.webp" alt="A topic: the story of a paper as a curated subgraph" width="1440" height="900" loading="lazy">
+            <img class="only-dark" src="assets/img/shots/topic-story-dark.webp" alt="A topic: the story of a paper as a curated subgraph" width="1440" height="900" loading="lazy">
+          </figure>
+        </div>
+        <div class="reel-dots"><span data-i18n="reel.home">Home</span><span data-i18n="reel.map">Research map</span><span data-i18n="reel.topic">Topics</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Three pillars -->
+  <section id="why" class="pillars-sec">
+    <div class="wrap">
+      <div class="pillars">
+        <article class="pillar" id="pillar-research">
+          <div class="pillar-copy">
+            <span class="pillar-num">01</span>
+            <h2 data-i18n="p1.t">Auto research that grows on a fact graph</h2>
+            <p data-i18n="p1.p">From idea to research map to implementation, agents work in parallel on a graph of claims, evidence and experiments. You stay in the loop and accept every result, so one person can lead a whole agent team.</p>
+          </div>
+          <div class="pillar-visual">
+            <svg class="grow" viewBox="0 0 640 360" role="img" aria-labelledby="grow-title">
+              <title id="grow-title">An idea grows into claims, evidence and experiments, then into tasks that three agents run in parallel; results come back for review.</title>
+              <g class="lanes">
+                <text x="70" y="26" data-i18n="p1.v.idea">Idea</text>
+                <text x="250" y="26" data-i18n="p1.v.map">Research map</text>
+                <text x="485" y="26" data-i18n="p1.v.impl">Implementation</text>
+              </g>
+              <g class="edges">
+                <path class="e e1" d="M110 180 C160 180 170 95 215 95"/>
+                <path class="e e1" d="M110 180 C160 180 170 180 215 180"/>
+                <path class="e e1" d="M110 180 C160 180 170 265 215 265"/>
+                <path class="e e2" d="M300 95 C330 95 320 140 345 140"/>
+                <path class="e e2" d="M300 180 C330 180 320 140 345 140"/>
+                <path class="e e2" d="M300 265 C330 265 320 225 345 225"/>
+                <path class="e e3" d="M405 140 C440 140 430 80 455 80"/>
+                <path class="e e3" d="M405 140 C440 140 430 180 455 180"/>
+                <path class="e e3" d="M405 225 C440 225 430 280 455 280"/>
+              </g>
+              <g class="n n0"><rect x="30" y="160" width="80" height="40" rx="9" class="c-idea"/><text x="70" y="185" data-i18n="p1.v.q">Question</text></g>
+              <g class="n n1"><rect x="215" y="77" width="85" height="36" rx="8" class="c-claim"/><text x="257" y="100" data-i18n="p1.v.claim">Claim</text></g>
+              <g class="n n1 d1"><rect x="215" y="162" width="85" height="36" rx="8" class="c-evid"/><text x="257" y="185" data-i18n="p1.v.evidence">Evidence</text></g>
+              <g class="n n1 d2"><rect x="215" y="247" width="85" height="36" rx="8" class="c-rel"/><text x="257" y="270" data-i18n="p1.v.paper">Paper</text></g>
+              <g class="n n2"><rect x="345" y="122" width="60" height="36" rx="8" class="c-exp"/><text x="375" y="145" data-i18n="p1.v.exp">Exp</text></g>
+              <g class="n n2 d1"><rect x="345" y="207" width="60" height="36" rx="8" class="c-exp"/><text x="375" y="230" data-i18n="p1.v.exp">Exp</text></g>
+              <g class="n n3"><rect x="455" y="60" width="160" height="40" rx="8" class="c-task"/><text x="466" y="78" class="l" data-i18n="p1.v.task1">Run ablation</text><rect class="bar-bg" x="466" y="87" width="112" height="5" rx="2.5"/><rect class="bar b1" x="466" y="87" width="112" height="5" rx="2.5"/></g>
+              <g class="n n3 d1"><rect x="455" y="160" width="160" height="40" rx="8" class="c-task"/><text x="466" y="178" class="l" data-i18n="p1.v.task2">Rerun baseline</text><rect class="bar-bg" x="466" y="187" width="112" height="5" rx="2.5"/><rect class="bar b2" x="466" y="187" width="112" height="5" rx="2.5"/></g>
+              <g class="n n3 d2"><rect x="455" y="260" width="160" height="40" rx="8" class="c-task"/><text x="466" y="278" class="l" data-i18n="p1.v.task3">Draft figures</text><rect class="bar-bg" x="466" y="287" width="112" height="5" rx="2.5"/><rect class="bar b3" x="466" y="287" width="112" height="5" rx="2.5"/></g>
+              <g class="agents">
+                <g class="ag a1"><circle cx="596" cy="80" r="11"/><text x="596" y="80">A1</text></g>
+                <g class="ag a2"><circle cx="596" cy="180" r="11"/><text x="596" y="180">A2</text></g>
+                <g class="ag a3"><circle cx="596" cy="280" r="11"/><text x="596" y="280">A3</text></g>
+              </g>
+              <g class="review">
+                <rect x="455" y="318" width="160" height="30" rx="15"/>
+                <text x="535" y="338" data-i18n="p1.v.review">✓ Accepted by you</text>
+              </g>
+            </svg>
+          </div>
+        </article>
+
+        <article class="pillar" id="pillar-resources">
+          <div class="pillar-copy">
+            <span class="pillar-num">02</span>
+            <h2 data-i18n="p2.t">Codebases, machines and GPUs in one context</h2>
+            <p data-i18n="p2.p">Register repositories, environments, storage, workstations and GPU servers once. Every agent gets them with the project context, and the Resources graph shows what is online and who is using it.</p>
+          </div>
+          <div class="pillar-visual shot-visual">
+            <img class="only-light" src="assets/img/shots/pillar-resources-light.webp" alt="Resources graph: a workstation, the ARK server and two GPU servers with their GPUs and running jobs" width="770" height="490" loading="lazy">
+            <img class="only-dark" src="assets/img/shots/pillar-resources-dark.webp" alt="Resources graph: a workstation, the ARK server and two GPU servers with their GPUs and running jobs" width="770" height="490" loading="lazy">
+          </div>
+        </article>
+
+        <article class="pillar" id="pillar-team">
+          <div class="pillar-copy">
+            <span class="pillar-num">03</span>
+            <h2 data-i18n="p3.t">One project, a whole team</h2>
+            <p data-i18n="p3.p">Several people and their agents work on the same project in parallel, with assignees, a shared board and progress on Home. Accounts, roles and project grants decide who can use what.</p>
+          </div>
+          <div class="pillar-visual shot-visual">
+            <img class="only-light" src="assets/img/shots/pillar-team-light.webp" alt="Task board with assignees across inbox, active, review, blocked and done" width="902" height="395" loading="lazy">
+            <img class="only-dark" src="assets/img/shots/pillar-team-dark.webp" alt="Task board with assignees across inbox, active, review, blocked and done" width="902" height="395" loading="lazy">
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how" class="alt">
+    <div class="wrap">
+      <div class="sec-head center">
+        <span class="eyebrow" data-i18n="how.eyebrow">How it works</span>
+        <h2 data-i18n="how.title">One loop from question to accepted result</h2>
+        <p data-i18n="how.lead">The agent does the legwork and keeps the record honest. You set the direction and make the calls.</p>
+      </div>
+      <ol class="steps">
+        <li class="step">
+          <h3 data-i18n="how.s1.t">Capture</h3>
+          <p data-i18n="how.s1.p">A question, an idea or a paper becomes a node. Sources come in with their provenance.</p>
+          <div class="who"><span class="h" data-i18n="who.you">You</span><span class="a" data-i18n="who.agent">Agent</span></div>
+        </li>
+        <li class="step">
+          <h3 data-i18n="how.s2.t">Plan</h3>
+          <p data-i18n="how.s2.p">Before working, the agent writes its plan into a task node linked to the claim or experiment it serves.</p>
+          <div class="who"><span class="a" data-i18n="who.agent">Agent</span></div>
+        </li>
+        <li class="step">
+          <h3 data-i18n="how.s3.t">Evidence</h3>
+          <p data-i18n="how.s3.p">Literature, data and earlier results link to claims as support or contest, so gaps in the argument show.</p>
+          <div class="who"><span class="a" data-i18n="who.agent">Agent</span><span class="h" data-i18n="who.you">You</span></div>
+        </li>
+        <li class="step">
+          <h3 data-i18n="how.s4.t">Execute</h3>
+          <p data-i18n="how.s4.p">Agents run in managed sessions with permission modes, worktrees and a GPU queue, with progress written to the task.</p>
+          <div class="who"><span class="a" data-i18n="who.agent">Agent</span></div>
+        </li>
+        <li class="step">
+          <h3 data-i18n="how.s5.t">Review &amp; accept</h3>
+          <p data-i18n="how.s5.p">Results arrive as review nodes with their figures. Accept, send back or decide; each decision is kept.</p>
+          <div class="who"><span class="h" data-i18n="who.you">You</span></div>
+        </li>
+      </ol>
+      <div class="loop-note">
+        <svg width="20" height="20" style="flex:0 0 auto;color:var(--accent)"><use href="#i-bot"/></svg>
+        <span data-i18n="how.note"><strong>Built for long-running agents.</strong> Home hands you two starter prompts: one sets up the environment, one starts a research team. The agent reads the project context, follows a documented working mode and asks before anything irreversible.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow" data-i18n="feat.eyebrow">Features</span>
+        <h2 data-i18n="feat.title">Everything the argument needs, in one place</h2>
+        <p data-i18n="feat.lead">Graphs, outlines, boards and timelines are views of the same records, so moving from planning to execution keeps its context.</p>
+      </div>
+
+      <h3 class="group-title"><span>01</span><span data-i18n="g1">Auto research on a fact graph</span></h3>
+      <div class="features">
+        <article class="feature" style="--c:var(--accent)">
+          <div class="ic"><svg><use href="#i-map"/></svg></div>
+          <h3 data-i18n="f.map.t">Research map</h3>
+          <p data-i18n="f.map.p">Explore and edit the whole argument as a force graph, a tree, a radial view or a Mind layout. Filters, a shared inspector and inline references open the same node wherever you are.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/workbench.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--violet)">
+          <div class="ic"><svg><use href="#i-layers"/></svg></div>
+          <h3 data-i18n="f.topic.t">Topics</h3>
+          <p data-i18n="f.topic.p">A topic holds a curated subgraph with its own outline and layout: the story of a paper, a related-work map or an experiment process, shown exactly as intended.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/topics.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--pink)">
+          <div class="ic"><svg><use href="#i-bot"/></svg></div>
+          <h3 data-i18n="f.agent.t">Agent API and working mode</h3>
+          <p data-i18n="f.agent.p">A versioned HTTP API with scoped personal tokens lets any coding agent read context, create and link nodes, attach media and report progress. Plans go in task nodes, results in review nodes, your choices in decision nodes.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/agents/working-mode.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--green)">
+          <div class="ic"><svg><use href="#i-terminal"/></svg></div>
+          <h3 data-i18n="f.runs.t">Parallel agent sessions</h3>
+          <p data-i18n="f.runs.p">Start Claude Code, Codex, DSH or OpenCode from a task. Permission modes, approvals and a worktree per session keep parallel runs apart, with transcripts and files kept on the task.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/agents/providers.md" data-i18n="more">Read more</a>
+        </article>
+      </div>
+
+      <h3 class="group-title"><span>02</span><span data-i18n="g2">Codebases, machines and GPUs</span></h3>
+      <div class="features">
+        <article class="feature" style="--c:var(--amber)">
+          <div class="ic"><svg><use href="#i-shield"/></svg></div>
+          <h3 data-i18n="f.setup.t">Project setup</h3>
+          <p data-i18n="f.setup.p">Register repositories, environments, servers and storage once per project. Agents read the same register, so a new session starts with the right checkout and data paths.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/operations/multi-user-setup.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--red)">
+          <div class="ic"><svg><use href="#i-gpu"/></svg></div>
+          <h3 data-i18n="f.gpu.t">GPU servers and queue</h3>
+          <p data-i18n="f.gpu.p">SSH-based GPU discovery and a resource-aware queue that can colocate jobs within your limits. Agents submit, watch and cancel jobs through the API.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/operations/gpu.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--accent)">
+          <div class="ic"><svg><use href="#i-server"/></svg></div>
+          <h3 data-i18n="f.res.t">Resources graph</h3>
+          <p data-i18n="f.res.p">Devices, the resources on them and how they connect, in one read-only view: which GPUs are ours, which are busy, which repository lives where.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/operations/resources-graph.md" data-i18n="more">Read more</a>
+        </article>
+      </div>
+
+      <h3 class="group-title"><span>03</span><span data-i18n="g3">Research teams</span></h3>
+      <div class="features">
+        <article class="feature" style="--c:var(--green)">
+          <div class="ic"><svg><use href="#i-home"/></svg></div>
+          <h3 data-i18n="f.home.t">Home dashboard</h3>
+          <p data-i18n="f.home.p">One screen answers how the project stands: pulse numbers, the research pipeline, team load, what is blocked or late, and the items that need your decision.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/home-overview.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--violet)">
+          <div class="ic"><svg><use href="#i-shield"/></svg></div>
+          <h3 data-i18n="f.acc.t">Accounts and permissions</h3>
+          <p data-i18n="f.acc.p">Organization roles, project grants and scoped agent tokens. Personal devices and credentials stay private to their owner.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/operations/accounts-and-access.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--amber)">
+          <div class="ic"><svg><use href="#i-server"/></svg></div>
+          <h3 data-i18n="f.srv.t">Self-hosted Go server</h3>
+          <p data-i18n="f.srv.p">One <code>ark-server</code> binary with pure-Go SQLite. Accounts, HTTPS behind your proxy, systemd units and portable project folders you can back up and move.</p>
+          <a href="#self-host" data-i18n="more">Read more</a>
+        </article>
+      </div>
+
+      <h3 class="group-title"><span>+</span><span data-i18n="g4">Wherever you work</span></h3>
+      <div class="features">
+        <article class="feature" style="--c:var(--violet)">
+          <div class="ic"><svg><use href="#i-monitor"/></svg></div>
+          <h3 data-i18n="f.desk.t">Desktop app</h3>
+          <p data-i18n="f.desk.p">Windows, macOS and Ubuntu. Runs a private ARK on this computer with the bundled server and opens your ARK servers in the same window, with a tray menu.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/desktop.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--green)">
+          <div class="ic"><svg><use href="#i-phone"/></svg></div>
+          <h3 data-i18n="f.mob.t">Mobile</h3>
+          <p data-i18n="f.mob.p">A responsive web app and two Android apps. Pair a phone with a QR code, review results and accept work away from your desk.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/mobile.md" data-i18n="more">Read more</a>
+        </article>
+        <article class="feature" style="--c:var(--accent)">
+          <div class="ic"><svg><use href="#i-plug"/></svg></div>
+          <h3 data-i18n="f.plug.t">Plugins</h3>
+          <p data-i18n="f.plug.p">Every workbench view is a plugin. Add your own views; they run sandboxed, declare their permissions and ask before they write.</p>
+          <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/README.md" data-i18n="more">Read more</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots -->
+  <section id="screenshots" class="alt">
+    <div class="wrap">
+      <div class="sec-head center">
+        <span class="eyebrow" data-i18n="shots.eyebrow">Screenshots</span>
+        <h2 data-i18n="shots.title">See it with the built-in demo</h2>
+        <p data-i18n="shots.lead">Every new install includes the PredActor demo project, so you can explore before your own work goes in.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Screenshots">
+        <button type="button" role="tab" aria-selected="true" data-shot="home" data-i18n="tab.home">Home</button>
+        <button type="button" role="tab" aria-selected="false" data-shot="map" data-i18n="tab.map">Map</button>
+        <button type="button" role="tab" aria-selected="false" data-shot="mind" data-i18n="tab.mind">Mind layout</button>
+        <button type="button" role="tab" aria-selected="false" data-shot="topic" data-i18n="tab.topic">Topics</button>
+        <button type="button" role="tab" aria-selected="false" data-shot="board" data-i18n="tab.board">Task board</button>
+        <button type="button" role="tab" aria-selected="false" data-shot="resources" data-i18n="tab.resources">Resources</button>
+        <button type="button" role="tab" aria-selected="false" data-shot="editor" data-i18n="tab.editor">Editor</button>
+        <button type="button" role="tab" aria-selected="false" data-shot="phone" data-i18n="tab.phone">Phone</button>
+      </div>
+      <div class="shot on" data-shot="home" role="tabpanel">
+        <div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+          <img class="only-light only-en" src="assets/img/shots/home-light.webp" alt="Home dashboard" width="1440" height="900" loading="lazy">
+          <img class="only-dark only-en" src="assets/img/shots/home-dark.webp" alt="Home dashboard" width="1440" height="900" loading="lazy">
+          <img class="only-light only-zh" src="assets/img/shots/home-zh-light.webp" alt="首页" width="1440" height="900" loading="lazy">
+          <img class="only-dark only-zh" src="assets/img/shots/home-zh-dark.webp" alt="首页" width="1440" height="900" loading="lazy">
+        </div>
+        <p class="caption" data-i18n="cap.home">Home: pulse numbers against last week, items waiting for you with their figures, the research pipeline and team load.</p>
+      </div>
+      <div class="shot" data-shot="map" role="tabpanel">
+        <div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+          <img class="only-light" src="assets/img/shots/map-force-light.webp" alt="Force graph" width="1440" height="900" loading="lazy">
+          <img class="only-dark" src="assets/img/shots/map-force-dark.webp" alt="Force graph" width="1440" height="900" loading="lazy">
+        </div>
+        <p class="caption" data-i18n="cap.map">Map: the whole argument as a force graph, with a local graph on the left and the node inspector on the right.</p>
+      </div>
+      <div class="shot" data-shot="mind" role="tabpanel">
+        <div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+          <img class="only-light" src="assets/img/shots/map-mind-light.webp" alt="Mind layout" width="1440" height="900" loading="lazy">
+          <img class="only-dark" src="assets/img/shots/map-mind-dark.webp" alt="Mind layout" width="1440" height="900" loading="lazy">
+        </div>
+        <p class="caption" data-i18n="cap.mind">Mind layout: the same nodes arranged as an outline you can read from left to right.</p>
+      </div>
+      <div class="shot" data-shot="topic" role="tabpanel">
+        <div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+          <img class="only-light" src="assets/img/shots/topic-story-light.webp" alt="Story topic" width="1440" height="900" loading="lazy">
+          <img class="only-dark" src="assets/img/shots/topic-story-dark.webp" alt="Story topic" width="1440" height="900" loading="lazy">
+        </div>
+        <p class="caption" data-i18n="cap.topic">Topics: the story of a paper as a canvas with its own outline, from motivation to evidence and limits.</p>
+      </div>
+      <div class="shot" data-shot="board" role="tabpanel">
+        <div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+          <img class="only-light" src="assets/img/shots/board-light.webp" alt="Task board" width="1440" height="900" loading="lazy">
+          <img class="only-dark" src="assets/img/shots/board-dark.webp" alt="Task board" width="1440" height="900" loading="lazy">
+        </div>
+        <p class="caption" data-i18n="cap.board">Execute: tasks by status, each one ready to hand to an agent session.</p>
+      </div>
+      <div class="shot" data-shot="resources" role="tabpanel">
+        <div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+          <img class="only-light" src="assets/img/shots/resources-light.webp" alt="Resources graph" width="1440" height="900" loading="lazy">
+          <img class="only-dark" src="assets/img/shots/resources-dark.webp" alt="Resources graph" width="1440" height="900" loading="lazy">
+        </div>
+        <p class="caption" data-i18n="cap.resources">Resources: a workstation, the ARK server and two GPU servers, with the GPUs our jobs hold and the ones others use (sample data).</p>
+      </div>
+      <div class="shot" data-shot="editor" role="tabpanel">
+        <div class="frame"><div class="frame-bar"><i></i><i></i><i></i></div>
+          <img class="only-light" src="assets/img/shots/editor-light.webp" alt="Editor" width="1440" height="900" loading="lazy">
+          <img class="only-dark" src="assets/img/shots/editor-dark.webp" alt="Editor" width="1440" height="900" loading="lazy">
+        </div>
+        <p class="caption" data-i18n="cap.editor">Editor: Markdown source and preview side by side, with tables, equations and links back to the graph.</p>
+      </div>
+      <div class="shot" data-shot="phone" role="tabpanel">
+        <div class="phones">
+          <div class="phone">
+            <img class="only-light" src="assets/img/shots/phone-home-light.webp" alt="Home on a phone" width="585" height="1266" loading="lazy">
+            <img class="only-dark" src="assets/img/shots/phone-home-dark.webp" alt="Home on a phone" width="585" height="1266" loading="lazy">
+          </div>
+          <div class="phone">
+            <img class="only-light" src="assets/img/shots/phone-map-light.webp" alt="Map on a phone" width="585" height="1266" loading="lazy">
+            <img class="only-dark" src="assets/img/shots/phone-map-dark.webp" alt="Map on a phone" width="585" height="1266" loading="lazy">
+          </div>
+        </div>
+        <p class="caption" data-i18n="cap.phone">On a phone: the responsive web app with bottom navigation. The Android apps open the same server.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section id="download">
+    <div class="wrap">
+      <div class="sec-head center">
+        <span class="eyebrow" data-i18n="dl.eyebrow">Download</span>
+        <h2 data-i18n="dl.title">Get ARK Studio</h2>
+        <p data-i18n="dl.lead">The desktop app runs ARK on your computer and connects to your servers. No Python, no account, no model key needed to start.</p>
+      </div>
+      <p class="os-hint">
+        <span id="os-line" data-i18n="dl.detecting">Pick the build for your system.</span>
+        <span class="ver" id="release-version" hidden></span>
+      </p>
+      <div class="dl-grid">
+        <div class="dl" data-os="windows">
+          <span class="badge" data-i18n="dl.rec">For your system</span>
+          <div class="dl-head"><svg><use href="#i-monitor"/></svg><h3>Windows</h3></div>
+          <p class="req" data-i18n="dl.win.req">Windows 10 or 11, x64</p>
+          <ul>
+            <li><a class="asset main" data-asset="win-setup" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.win.setup">Installer</span><small>.exe</small></span><span class="meta"></span></a></li>
+            <li><a class="asset" data-asset="win-msi" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.win.msi">MSI for IT deployment</span><small>.msi</small></span><span class="meta"></span></a></li>
+            <li><a class="asset" data-asset="win-portable" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.win.zip">Portable</span><small>.zip</small></span><span class="meta"></span></a></li>
+          </ul>
+        </div>
+        <div class="dl" data-os="mac">
+          <span class="badge" data-i18n="dl.rec">For your system</span>
+          <div class="dl-head"><svg><use href="#i-laptop"/></svg><h3>macOS</h3></div>
+          <p class="req" data-i18n="dl.mac.req">macOS 10.15 or newer</p>
+          <ul>
+            <li><a class="asset main" data-asset="mac-arm" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.mac.arm">Apple silicon</span><small>.dmg</small></span><span class="meta"></span></a></li>
+            <li><a class="asset" data-asset="mac-intel" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.mac.intel">Intel</span><small>.dmg</small></span><span class="meta"></span></a></li>
+          </ul>
+        </div>
+        <div class="dl" data-os="linux">
+          <span class="badge" data-i18n="dl.rec">For your system</span>
+          <div class="dl-head"><svg><use href="#i-terminal"/></svg><h3>Linux</h3></div>
+          <p class="req" data-i18n="dl.linux.req">Ubuntu 22.04+, Debian 12+, x64</p>
+          <ul>
+            <li><a class="asset main" data-asset="linux-deb" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.linux.deb">Ubuntu / Debian</span><small>.deb</small></span><span class="meta"></span></a></li>
+            <li><a class="asset" data-asset="linux-appimage" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.linux.appimage">Other distributions</span><small>.AppImage</small></span><span class="meta"></span></a></li>
+          </ul>
+        </div>
+        <div class="dl" data-os="android">
+          <span class="badge" data-i18n="dl.rec">For your system</span>
+          <div class="dl-head"><svg><use href="#i-phone"/></svg><h3>Android</h3></div>
+          <p class="req" data-i18n="dl.and.req">Connects to an ARK server</p>
+          <ul>
+            <li><a class="asset main" data-asset="android" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.and.app">ARK Studio app</span><small>.apk</small></span><span class="meta"></span></a></li>
+            <li><a class="asset" data-asset="android-web" href="https://github.com/MasterYip/ARK-Studio/releases/latest"><span class="label"><span data-i18n="dl.and.web">ARK Studio Web, lightweight</span><small>.apk</small></span><span class="meta"></span></a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="server-assets">
+        <div class="dl" data-os="server">
+          <div class="dl-head"><svg><use href="#i-server"/></svg><h3 data-i18n="dl.srv.t">ark-server</h3></div>
+          <ul>
+            <li><a class="asset" data-asset="srv-linux-amd64" href="https://github.com/MasterYip/ARK-Studio/releases/latest">Linux x64 <span class="meta">.tar.gz</span></a></li>
+            <li><a class="asset" data-asset="srv-linux-arm64" href="https://github.com/MasterYip/ARK-Studio/releases/latest">Linux arm64 <span class="meta">.tar.gz</span></a></li>
+            <li><a class="asset" data-asset="srv-deb-amd64" href="https://github.com/MasterYip/ARK-Studio/releases/latest">Debian x64 <span class="meta">.deb</span></a></li>
+            <li><a class="asset" data-asset="srv-deb-arm64" href="https://github.com/MasterYip/ARK-Studio/releases/latest">Debian arm64 <span class="meta">.deb</span></a></li>
+            <li><a class="asset" data-asset="srv-darwin-arm64" href="https://github.com/MasterYip/ARK-Studio/releases/latest">macOS arm64 <span class="meta">.tar.gz</span></a></li>
+            <li><a class="asset" data-asset="srv-darwin-amd64" href="https://github.com/MasterYip/ARK-Studio/releases/latest">macOS x64 <span class="meta">.tar.gz</span></a></li>
+            <li><a class="asset" data-asset="srv-windows-amd64" href="https://github.com/MasterYip/ARK-Studio/releases/latest">Windows x64 <span class="meta">.zip</span></a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="dl-foot">
+        <a href="https://github.com/MasterYip/ARK-Studio/releases/latest" data-i18n="dl.notes">Release notes</a>
+        <a data-asset="sums" href="https://github.com/MasterYip/ARK-Studio/releases/latest" data-i18n="dl.sums">SHA256 checksums</a>
+        <a href="https://github.com/MasterYip/ARK-Studio/releases" data-i18n="dl.all">All releases</a>
+        <a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/install.md#unsigned-builds-windows-smartscreen-and-macos-gatekeeper" data-i18n="dl.unsigned">Builds are not code-signed yet: first-run steps</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Self-host -->
+  <section id="self-host" class="alt">
+    <div class="wrap selfhost">
+      <div>
+        <span class="eyebrow" data-i18n="sh.eyebrow">Self-host the server</span>
+        <h2 data-i18n="sh.title">One binary for your team</h2>
+        <p class="sub" data-i18n="sh.lead">Run <code>ark-server</code> on a workstation or a GPU box. Browsers, the desktop app and the Android apps all connect to it.</p>
+        <ul>
+          <li data-i18n="sh.l1">Single Go binary, no runtime to install</li>
+          <li data-i18n="sh.l2">Binds to loopback by default; public mode requires sign-in</li>
+          <li data-i18n="sh.l3">Accounts, organization roles and per-project grants</li>
+          <li data-i18n="sh.l4">Example config and a systemd user unit in every package</li>
+        </ul>
+        <p><a href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/operations/server-operations.md" data-i18n="sh.ops">Server operations guide</a></p>
+      </div>
+      <div>
+        <div class="code">
+          <div class="code-head"><span data-i18n="sh.c1">Linux, from a release package</span><button class="copy" type="button" data-copy="c1" data-i18n="copy">Copy</button></div>
+<pre id="c1"><span class="c"># the Linux x64 archive from the latest release</span>
+tar -xzf ark-server-*-linux-amd64.tar.gz
+cd ark-server-*-linux-amd64
+./ark-server version
+./ark-server serve --root ~/ark/projects   <span class="c"># http://127.0.0.1:8890/</span></pre>
+        </div>
+        <div class="code">
+          <div class="code-head"><span data-i18n="sh.c2">From source (Go 1.27+)</span><button class="copy" type="button" data-copy="c2" data-i18n="copy">Copy</button></div>
+<pre id="c2">git clone https://github.com/MasterYip/ARK-Studio.git
+cd ARK-Studio/ark_studio/server
+go generate ./... &amp;&amp; go build ./cmd/ark-server
+./ark-server serve --port 8890</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Docs -->
+  <section id="docs">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow" data-i18n="docs.eyebrow">Documentation</span>
+        <h2 data-i18n="docs.title">Guides</h2>
+      </div>
+      <div class="docs">
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/install.md"><strong data-i18n="d.install.t">Install</strong><span data-i18n="d.install.p">Downloads per OS, first run, data folders</span></a>
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/agents/working-mode.md"><strong data-i18n="d.mode.t">Agent working mode</strong><span data-i18n="d.mode.p">Plans, progress, review and decision nodes</span></a>
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/agents/external-agent.md"><strong data-i18n="d.ext.t">External agents</strong><span data-i18n="d.ext.p">Tokens, project context and media</span></a>
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/agents/providers.md"><strong data-i18n="d.prov.t">Providers</strong><span data-i18n="d.prov.p">Claude Code, Codex, DSH, OpenCode, worktrees</span></a>
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/desktop.md"><strong data-i18n="d.desk.t">Desktop app</strong><span data-i18n="d.desk.p">This computer and your servers in one window</span></a>
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/guide/mobile.md"><strong data-i18n="d.mob.t">Mobile and remote</strong><span data-i18n="d.mob.p">Android apps, pairing, HTTPS and tunnels</span></a>
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/operations/gpu.md"><strong data-i18n="d.gpu.t">GPU servers</strong><span data-i18n="d.gpu.p">SSH probes, queue and resource policies</span></a>
+        <a class="doc" href="https://github.com/MasterYip/ARK-Studio/blob/main/docs/README.md"><strong data-i18n="d.all.t">All documentation</strong><span data-i18n="d.all.p">Guides, operations and development</span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="#top" aria-label="ARK Studio">
+      <img class="only-light" src="assets/img/ark-lockup-loading.svg" alt="ARK Studio" width="111" height="24">
+      <img class="only-dark" src="assets/img/ark-lockup-loading-dark.svg" alt="ARK Studio" width="111" height="24">
+    </a>
+    <nav aria-label="Footer">
+      <a href="https://github.com/MasterYip/ARK-Studio">GitHub</a>
+      <a href="https://github.com/MasterYip/ARK-Studio/releases" data-i18n="ft.releases">Releases</a>
+      <a href="https://github.com/MasterYip/ARK-Studio/issues" data-i18n="ft.issues">Issues</a>
+      <a href="https://github.com/MasterYip/ARK-Studio/blob/main/CHANGELOG.md" data-i18n="ft.changelog">Changelog</a>
+      <a href="https://github.com/MasterYip/ARK-Studio/blob/main/LICENSE" data-i18n="ft.license">MIT License</a>
+    </nav>
+    <span data-i18n="ft.note">ARK Studio is open source under the MIT License.</span>
+  </div>
+</footer>
+
+<script src="assets/js/site.js" defer></script>
+</body>
+</html>
