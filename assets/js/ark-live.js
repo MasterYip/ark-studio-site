@@ -5,7 +5,7 @@
 // (assets/css/ark-ui.css). Data is a fixed, fictional demo project; nothing
 // here talks to a server. Components start when scrolled into view, pause off
 // screen and show a settled frame under prefers-reduced-motion.
-import { typeColor, stepForce, GRAPH_DEFAULTS, forceNodeRadius, drawForceNode, addArrowhead, paintArrowheads, arrowSize } from "./ark/graph-core.js";
+import { typeColor, stepForce, forceSettleStep, GRAPH_DEFAULTS, forceNodeRadius, drawForceNode, addArrowhead, paintArrowheads, arrowSize } from "./ark/graph-core.js";
 import { icon, drawStatusIcon } from "./ark/icons.js";
 import { mindLayout } from "./ark/mind-layout.js";
 
@@ -120,6 +120,10 @@ const refreshers = new Set();
 new MutationObserver(() => refreshers.forEach((fn) => fn())).observe(root, { attributes: true, attributeFilter: ["lang", "data-theme"] });
 
 // ------------------------------------------------------------ Force canvas
+const LIVE_CANVASES = new Set();
+document.addEventListener("visibilitychange", () => {
+  for (const c of LIVE_CANVASES) if (document.hidden) c.pause(); else c.kick(0);
+});
 // ARK's Force map: stepForce with GRAPH_DEFAULTS, drawForceNode, arrowheads.
 class ForceCanvas {
   constructor(host, { labels = true, minLabelDegree = 0, overlay = null, fitPad = 40, insetRight = null, colorOf = null, labelOf = null, edgeStyle = null, radiusOf = null, padTop = 0, fitFilter = null, arrows = true, jiggle = 0, labelCollide = false, labelColorOf = null, padBottom = 0 } = {}) {
@@ -138,20 +142,24 @@ class ForceCanvas {
     new ResizeObserver(() => this.resize()).observe(host);
     // Hover as on ARK's map: ring on the node, its neighbourhood highlighted.
     this.hover = null;
-    host.addEventListener("pointermove", (ev) => {
-      if (!this.view) return;
-      const r = host.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
-      let best = null, bd = 14;
-      for (const n of this.nodes) { const s = this.screen(n), d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = n; } }
-      if (best !== this.hover) { this.hover = best; host.style.cursor = best ? "pointer" : ""; if (!this.running) this.draw(); }
+    // Hit-testing runs at most once per frame and reads no layout: the
+    // event's offsets are relative to the canvas, which fills the host.
+    this.pointer = null; this.pickPending = false;
+    this.canvas.addEventListener("pointermove", (ev) => {
+      this.pointer = { x: ev.offsetX, y: ev.offsetY };
+      if (!this.pickPending) { this.pickPending = true; requestAnimationFrame(() => this.pick()); }
     });
-    host.addEventListener("pointerleave", () => { if (this.hover) { this.hover = null; host.style.cursor = ""; if (!this.running) this.draw(); } });
+    this.canvas.addEventListener("pointerleave", () => { this.pointer = null; if (this.hover) { this.hover = null; this.canvas.style.cursor = ""; if (!this.running) this.draw(); } });
+    // Off screen or in a hidden tab the loop stops; it resumes when shown.
+    this.onscreen = true;
+    if ("IntersectionObserver" in window) new IntersectionObserver((e) => { this.onscreen = e[0].isIntersecting; if (this.onscreen) this.kick(0); else this.pause(); }).observe(host);
+    LIVE_CANVASES.add(this);
     refreshers.add(() => { this.pal = palette(host); this.draw(); });
     this.resize();
   }
   resize() {
     const r = this.host.getBoundingClientRect();
-    const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    const dpr = Math.min(r.width > 800 ? 1.5 : 2, window.devicePixelRatio || 1);
     const changed = Math.abs(r.width - (this.w || 0)) > 1 || Math.abs(r.height - (this.h || 0)) > 1;
     this.w = Math.max(1, r.width); this.h = Math.max(1, r.height);
     if (changed) this.view = null;
@@ -163,7 +171,7 @@ class ForceCanvas {
   set(nodes, edges) {
     this.nodes = nodes; this.edges = edges; this.byId = new Map(nodes.map((n) => [n.id, n]));
     nodes.forEach((n, i) => { n.vx = n.vx || 0; n.vy = n.vy || 0; if (!n.x && !n.y) { const a = i * 2.399963; const r = 18 * Math.sqrt(i + 1); n.x = Math.cos(a) * r; n.y = Math.sin(a) * r; } });
-    this.idle = 0;
+    this.kick();
   }
   add(node, edges = []) {
     const parent = edges.length ? this.byId.get(edges[0].target === node.id ? edges[0].source : edges[0].target) : null;
@@ -173,9 +181,9 @@ class ForceCanvas {
     this.nodes.push(node); this.byId.set(node.id, node);
     for (const e of edges) { e.born = performance.now(); this.edges.push(e); }
     for (const n of this.nodes) n.degree = this.edges.filter((e) => e.source === n.id || e.target === n.id).length;
-    this.idle = 0;
+    this.kick();
   }
-  settle(ticks = 320) { this.nodes.forEach((n) => { n.born = null; }); this.edges.forEach((e) => { e.born = null; }); for (let i = 0; i < ticks; i++) stepForce(this.nodes, this.edges, this.byId, this.cfg, null); this.view = null; }
+  settle(ticks = 320) { this.nodes.forEach((n) => { n.born = null; }); this.edges.forEach((e) => { e.born = null; }); for (let i = 0; i < ticks; i++) stepForce(this.nodes, this.edges, this.byId, this.cfg, null); this.view = null; this.calm = true; }
   fit(immediate) {
     if (!this.nodes.length) return;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -188,23 +196,51 @@ class ForceCanvas {
     else for (const k of ["z", "x", "y"]) this.view[k] += (target[k] - this.view[k]) * 0.08;
   }
   screen(n) { return { x: n.x * this.view.z + this.view.x, y: n.y * this.view.z + this.view.y }; }
-  start() {
-    if (this.running) return;
+  pick() {
+    this.pickPending = false;
+    if (!this.pointer || !this.view) return;
+    const { x, y } = this.pointer;
+    let best = null, bd = 14;
+    for (const n of this.nodes) { const s = this.screen(n), d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = n; } }
+    if (best !== this.hover) { this.hover = best; this.canvas.style.cursor = best ? "pointer" : ""; this.draw(); }
+  }
+  // "live" means allowed to animate. The loop itself runs only while there is
+  // work: the simulation has not settled (ARK's forceSettleStep rule), the view
+  // is easing, a node is fading in, or a wake window is open (an agent badge
+  // gliding). Then it stops; events wake it again. 30 frames per second.
+  start() { this.live = true; this.kick(); }
+  stop() { this.live = false; this.pause(); }
+  pause() { this.running = false; cancelAnimationFrame(this.frame); }
+  kick(ms = 0) {
+    this.calm = false; this.settleState = {};
+    this.wakeUntil = Math.max(this.wakeUntil || 0, performance.now() + ms);
+    if (this.live && !this.running && this.onscreen !== false && !document.hidden) this.loop();
+  }
+  loop() {
     this.running = true;
-    const tick = () => {
+    let last = 0;
+    const tick = (now) => {
       if (!this.running) return;
-      if (this.jiggle) {
-        // A living graph: small random nudges keep the layout breathing.
-        for (const n of this.nodes) { n.vx += (Math.random() - 0.5) * this.jiggle; n.vy += (Math.random() - 0.5) * this.jiggle; }
-        stepForce(this.nodes, this.edges, this.byId, this.cfg, null);
-      } else if (this.idle < 600) { stepForce(this.nodes, this.edges, this.byId, this.cfg, null); this.idle++; }
-      this.fit(false);
-      this.draw();
       this.frame = requestAnimationFrame(tick);
+      if (now - last < 32) return;
+      last = now;
+      if (!this.calm) {
+        let mean = 0, max = 0;
+        for (let i = 0; i < 2; i++) stepForce(this.nodes, this.edges, this.byId, this.cfg, null);
+        for (const n of this.nodes) { const v = Math.hypot(n.vx, n.vy); mean += v; if (v > max) max = v; }
+        mean /= Math.max(1, this.nodes.length);
+        const rule = forceSettleStep(this.settleState, { mean, max }, this.view ? this.view.z : 1, 1);
+        if (rule !== "run") this.calm = true;
+      }
+      const before = this.view ? { ...this.view } : null;
+      this.fit(false);
+      const easing = before && (Math.abs(before.x - this.view.x) > 0.3 || Math.abs(before.y - this.view.y) > 0.3 || Math.abs(before.z - this.view.z) > 0.002);
+      const fading = this.nodes.some((n) => n.born && now - n.born < 450) || this.edges.some((e) => e.born && now - e.born < 450);
+      this.draw();
+      if (this.calm && !easing && !fading && now > this.wakeUntil) this.pause();
     };
     this.frame = requestAnimationFrame(tick);
   }
-  stop() { this.running = false; cancelAnimationFrame(this.frame); }
   draw() {
     const { ctx, pal } = this;
     if (!ctx) return;
@@ -298,7 +334,7 @@ function mindCanvas(host) {
     for (const n of data.nodes) n.depth = n.parent ? 1 : 0;
   }
   function draw() {
-    const r = host.getBoundingClientRect(), dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    const r = host.getBoundingClientRect(), dpr = Math.min(r.width > 800 ? 1.5 : 2, window.devicePixelRatio || 1);
     const W = Math.max(1, r.width), H = Math.max(1, r.height);
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
     canvas.style.width = W + "px"; canvas.style.height = H + "px";
@@ -541,7 +577,7 @@ function mapScene(pane) {
   const tasks = [...pane.querySelectorAll(".ms-task")];
   const setTask = (i, state, pct) => {
     tasks[i].setAttribute("data-state", state);
-    if (pct != null) tasks[i].querySelector(".mt-bar i").style.width = pct + "%";
+    if (pct != null) tasks[i].querySelector(".mt-bar i").style.transform = `scaleX(${pct / 100})`;
     pane.querySelector("#mock-active").textContent = pane.querySelectorAll('.ms-task[data-state="active"]').length;
   };
   const gpu = (id, on) => pane.querySelector("#" + id).classList.toggle("ours", on);
@@ -553,7 +589,7 @@ function mapScene(pane) {
   };
   refreshers.add(() => { renderNeeds(needsState); fc.nodes.forEach((n) => { n.title = nodeOf(n.id).title; }); fc.draw(); });
   const grow = (id) => { if (!fc.byId.has(id)) fc.add(nodeOf(id), linkFor(id)); };
-  const agentTo = (name, id) => { agents[name].on = true; agents[name].to = id; };
+  const agentTo = (name, id) => { agents[name].on = true; agents[name].to = id; fc.kick(1600); };
   const t = timersOf();
   function reset() {
     fc.set([], []); fc.view = null;
@@ -645,8 +681,8 @@ function agentsScene(pane) {
     log.append(h("div", { class: "ag-line" }, text));
     while (log.children.length > 4) log.firstChild.remove();
   };
-  const state = (i, s, pct) => { cards[i].setAttribute("data-state", s); if (pct != null) cards[i].querySelector(".ag-bar i").style.width = pct + "%"; };
-  const moveTo = (i, id) => { const [badge, , color] = SESSIONS[i]; presence[badge] = Object.assign(presence[badge] || { x: null }, { to: id, color }); };
+  const state = (i, s, pct) => { cards[i].setAttribute("data-state", s); if (pct != null) cards[i].querySelector(".ag-bar i").style.transform = `scaleX(${pct / 100})`; };
+  const moveTo = (i, id) => { const [badge, , color] = SESSIONS[i]; presence[badge] = Object.assign(presence[badge] || { x: null }, { to: id, color }); fc.kick(1600); };
   const ROUTE = { 0: ["X-0002", "T-0013", "E-0002"], 1: ["T-0012", "A-0001", "E-0001"], 2: ["R-0001", "R-0002", "R-0003"], 3: ["X-0003", "T-0014", "X-0003"] };
   function settle() {
     t.clear(); fc.stop();
@@ -862,6 +898,41 @@ const ARK_BASE = [
   ["s1", "source", "Paper feed", "论文订阅"],
   ["c2", "claim", "Vision alone misses contact events", "仅靠视觉会漏掉接触事件"],
 ];
+// The InfoHub layout is deterministic, so it is computed once, in small
+// idle-time chunks after load, and reused by every build of the scene.
+const IH_LAYOUT = { pos: null, job: null };
+function ihGraphShape() {
+  const nodes = [], edges = [];
+  IH_BG.forEach(([, n], g) => {
+    const hub = "bh" + g;
+    nodes.push({ id: hub });
+    for (let i = 0; i < n; i++) { nodes.push({ id: `${hub}-${i}` }); edges.push({ source: `${hub}-${i}`, target: hub, relation: "part_of" }); }
+    if (g) edges.push({ source: hub, target: "bh" + (g - 1 + (g % 2)), relation: "relates_to" });
+  });
+  nodes.push({ id: "ih-hub" });
+  IH_KIDS.forEach((_, i) => { nodes.push({ id: "ih" + i }); edges.push({ source: "ih" + i, target: "ih-hub", relation: "part_of" }); });
+  edges.push({ source: "ih-hub", target: "bh2", relation: "relates_to" });
+  nodes.forEach((n, i) => { const a = i * 2.399963, r = 18 * Math.sqrt(i + 1); n.x = Math.cos(a) * r; n.y = Math.sin(a) * r; n.vx = 0; n.vy = 0; });
+  return { nodes, edges, byId: new Map(nodes.map((n) => [n.id, n])) };
+}
+function ihLayout(sync = false) {
+  if (IH_LAYOUT.pos) return IH_LAYOUT.pos;
+  const job = IH_LAYOUT.job || (IH_LAYOUT.job = { ...ihGraphShape(), done: 0 });
+  const cfg = { ...GRAPH_DEFAULTS, distance: 46 }, TOTAL = 420;
+  const finish = () => { IH_LAYOUT.pos = new Map(job.nodes.map((n) => [n.id, [n.x, n.y]])); IH_LAYOUT.job = null; };
+  if (sync) { while (job.done < TOTAL) { stepForce(job.nodes, job.edges, job.byId, cfg, null); job.done++; } finish(); return IH_LAYOUT.pos; }
+  const chunk = () => {
+    if (IH_LAYOUT.pos) return;
+    const end = Math.min(TOTAL, job.done + 30);
+    while (job.done < end) { stepForce(job.nodes, job.edges, job.byId, cfg, null); job.done++; }
+    if (job.done >= TOTAL) finish(); else idle(chunk);
+  };
+  idle(chunk);
+  return null;
+}
+const idle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 60));
+idle(() => ihLayout());
+
 function infohubScene(pane) {
   pane.innerHTML = "";
   const panel = (cls) => h("div", { class: `ih-panel ${cls}` },
@@ -874,17 +945,18 @@ function infohubScene(pane) {
   pane.append(left, right, over, toast);
   const octx = over.getContext("2d");
   const IDEA = typeColor("idea"), BLUE = "#3b82f6";
-  const pal = () => palette(pane);
+  let P = palette(pane);
+  const pal = () => P;
   let agentTo = null, grabbed = false;
   const agent = { x: null, y: null };
-  const ih = new ForceCanvas(left.querySelector(".ih-canvas"), { fitPad: 26, padTop: 30, padBottom: 24, arrows: false, jiggle: 0.05, labelCollide: true,
+  const ih = new ForceCanvas(left.querySelector(".ih-canvas"), { fitPad: 26, padTop: 30, padBottom: 24, arrows: false, labelCollide: true,
     fitFilter: (n) => n.cluster || n.bgHub,
     colorOf: (n) => (n.cluster ? (grabbed ? alpha(BLUE, 0.35) : BLUE) : alpha(pal().sub, n.bgHub ? 0.6 : 0.4)),
     edgeStyle: (e) => (e.cluster ? alpha(BLUE, grabbed ? 0.25 : 0.55) : alpha(pal().sub, 0.2)),
     radiusOf: (n) => (n.hub ? 11 : n.bgHub ? 6.5 : n.cluster ? 6 : 3.6),
     labelOf: (n) => (n.cluster || n.bgHub ? n.title : null),
     labelColorOf: (n, p) => (n.cluster && !grabbed ? p.ink : alpha(p.sub, 0.8)) });
-  const ark = new ForceCanvas(right.querySelector(".ih-canvas"), { fitPad: 26, padTop: 36, padBottom: 26, labelCollide: true, jiggle: 0.03,
+  const ark = new ForceCanvas(right.querySelector(".ih-canvas"), { fitPad: 26, padTop: 36, padBottom: 26, labelCollide: true,
     colorOf: (n) => (n.base ? alpha(typeColor(n.type), 0.55) : typeColor(n.type)),
     radiusOf: (n) => (n.hub ? 11 : n.base ? 6.5 : 6),
     labelOf: (n) => n.title,
@@ -914,7 +986,10 @@ function infohubScene(pane) {
       ...(ideas ? [h("span", { style: `--c:${IDEA}` }, L("Idea", "想法") + " " + ideas)] : []),
       h("span", { style: `--c:${typeColor("question")}` }, L("Question", "问题") + " 1"), h("span", { style: `--c:${typeColor("claim")}` }, L("Claim", "论断") + " 2"));
   }
+  let fresh = false;
   function build() {
+    fresh = true;
+    P = palette(pane);
     grabbed = false; agentTo = null; agent.x = null; drag = null;
     left.querySelector(".ih-title").textContent = L("InfoHub graph", "InfoHub 图谱");
     left.querySelector(".ih-sub").textContent = L("Read-only source · drag or copy into ARK", "只读来源 · 拖动或复制到 ARK");
@@ -932,7 +1007,10 @@ function infohubScene(pane) {
     nodes.push({ id: "ih-hub", type: "idea", status: "active", title: L(...IH_HUB), cluster: true, hub: true });
     IH_KIDS.forEach((k, i) => { nodes.push({ id: "ih" + i, type: "idea", status: "open", title: L(...k), cluster: true }); edges.push({ source: "ih" + i, target: "ih-hub", relation: "part_of", cluster: true }); });
     edges.push({ source: "ih-hub", target: "bh2", relation: "relates_to" });
-    ih.set(nodes, edges); ih.settle(420);
+    ih.set(nodes, edges);
+    const layout = ihLayout(true);
+    for (const n of nodes) { const q = layout.get(n.id); if (q) { n.x = q[0]; n.y = q[1]; n.vx = 0; n.vy = 0; } }
+    ih.calm = true; ih.view = null;
     ark.set(ARK_BASE.map(([id, type, en, cn]) => ({ id, type, status: "open", title: L(en, cn), base: true })),
       [["c1", "q1"], ["x1", "c1"], ["c2", "q1"], ["s1", "c2"]].map(([a, b]) => ({ source: a, target: b, relation: "part_of" })));
     ark.settle(300);
@@ -941,11 +1019,11 @@ function infohubScene(pane) {
     counts(); ih.draw(); ark.draw();
   }
   // ---- the drag: the hub follows the pointer, items trail on springs.
-  let drag = null, frame = 0;
+  let drag = null, frame = 0, overSize = { w: 0, h: 0 };
   function sizeOver() {
-    const r = pane.getBoundingClientRect(), dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    const r = pane.getBoundingClientRect(), dpr = Math.min(1.5, window.devicePixelRatio || 1);
     over.width = Math.round(r.width * dpr); over.height = Math.round(r.height * dpr);
-    over.style.width = r.width + "px"; over.style.height = r.height + "px";
+    over.style.width = r.width + "px"; over.style.height = r.height + "px"; overSize = { w: r.width, h: r.height };
     octx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return r;
   }
@@ -963,24 +1041,30 @@ function infohubScene(pane) {
     // The source graph feels the pull: nearby nodes are nudged toward the pointer.
     const hub = ih.byId.get("ih-hub");
     for (const n of ih.nodes) if (!n.cluster) { const dx = hub.x - n.x, dy = hub.y - n.y, d = Math.hypot(dx, dy) || 1; if (d < 160) { n.vx += dx / d * 1.6; n.vy += dy / d * 1.6; } }
+    ih.kick(400);
     over.style.display = "block";
     cancelAnimationFrame(frame); frame = requestAnimationFrame(stepDrag);
   }
+  let lastDrag = 0;
   function stepDrag(now) {
     if (!drag) return;
+    if (now - lastDrag < 32) { frame = requestAnimationFrame(stepDrag); return; }
+    lastDrag = now;
     const u = Math.min(1, (now - drag.t0) / drag.dur), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
     const hub = drag.items[0];
     hub.x = drag.from.x + (drag.to.x - drag.from.x) * e;
     hub.y = drag.from.y + (drag.to.y - drag.from.y) * e - Math.sin(e * Math.PI) * 36;
     const kids = drag.items.slice(1);
+    for (let pass = 0; pass < 2; pass++) {
     for (const a of kids) {
       const dx = hub.x - a.x, dy = hub.y - a.y, d = Math.hypot(dx, dy) || 1, f = (d - 44) * 0.018;
       a.vx += dx / d * f; a.vy += dy / d * f;
       for (const b of kids) if (b !== a) { const ex = a.x - b.x, ey = a.y - b.y, d2 = Math.max(80, ex * ex + ey * ey); a.vx += ex / d2 * 9; a.vy += ey / d2 * 9; }
     }
     for (const a of kids) { a.vx *= 0.86; a.vy *= 0.86; a.x += a.vx; a.y += a.vy; }
-    const p = pal(), r = over.getBoundingClientRect();
-    octx.clearRect(0, 0, r.width, r.height);
+    }
+    const p = pal();
+    octx.clearRect(0, 0, overSize.w, overSize.h);
     octx.strokeStyle = alpha(BLUE, 0.55); octx.lineWidth = 1.2;
     for (const a of kids) { octx.beginPath(); octx.moveTo(hub.x, hub.y); octx.lineTo(a.x, a.y); octx.stroke(); }
     for (const a of kids) drawForceNode(octx, { status: "open" }, a.x, a.y, 6, BLUE, p.bg);
@@ -1006,22 +1090,22 @@ function infohubScene(pane) {
     };
     add("ark-hub", L(...IH_HUB), true, 0);
     IH_KIDS.forEach((k, i) => add("ak" + i, L(...k), false, i + 1));
-    drag = null; cancelAnimationFrame(frame); over.style.display = "none"; grabbed = false;
-    ark.idle = 0; counts();
+    drag = null; cancelAnimationFrame(frame); over.style.display = "none"; grabbed = false; ih.kick(0);
+    ark.kick(); counts();
   }
   const linkUp = (animated) => {
     const born = animated ? performance.now() : null;
     IH_KIDS.forEach((_, i) => ark.edges.push({ source: "ak" + i, target: "ark-hub", relation: "part_of", born }));
     for (const n of ark.nodes) n.degree = ark.edges.filter((e) => e.source === n.id || e.target === n.id).length;
-    ark.idle = 0; counts();
+    ark.kick(); counts();
   };
-  const linkProject = (animated) => { ark.edges.push({ source: "ark-hub", target: "q1", relation: "relates_to", born: animated ? performance.now() : null }); ark.idle = 0; counts(); };
+  const linkProject = (animated) => { ark.edges.push({ source: "ark-hub", target: "q1", relation: "relates_to", born: animated ? performance.now() : null }); ark.kick(); counts(); };
   const t = timersOf();
   let running = false;
   build();
   refreshers.add(() => { build(); if (!running) settle(); });
   function settle() {
-    t.clear(); ih.stop(); ark.stop(); build();
+    t.clear(); ih.stop(); ark.stop(); build(); fresh = false;
     drop(false); linkUp(false); linkProject(false);
     ark.settle(360); ark.fit(true);
     agentTo = "ark-hub"; counts();
@@ -1030,14 +1114,14 @@ function infohubScene(pane) {
   return {
     length: 12000,
     play() {
-      running = true; t.clear(); build(); ih.start(); ark.start();
+      running = true; t.clear(); if (!fresh) build(); fresh = false; ih.start(); ark.start();
       t.add(1200, grab);
       t.add(1200 + 2400, () => drop(true));
       t.add(4000, () => toast.classList.add("on"));
       t.add(5300, () => linkUp(true));
       t.add(6800, () => { toast.classList.remove("on"); linkProject(true); });
-      t.add(7800, () => { agentTo = "ark-hub"; });
-      t.add(9600, () => { agentTo = "ak1"; });
+      t.add(7800, () => { agentTo = "ark-hub"; ark.kick(1800); });
+      t.add(9600, () => { agentTo = "ak1"; ark.kick(1800); });
     },
     stop() { running = false; t.clear(); ih.stop(); ark.stop(); cancelAnimationFrame(frame); },
     settle() { running = false; settle(); },
@@ -1071,6 +1155,13 @@ if (hero) {
     t.clear();
     const s = sceneAt(index);
     if (running) { s.play(); t.add(s.length, () => show(index + 1)); } else s.settle();
+    const next = (index + 1) % SCENES.length;
+    const prebuild = () => {
+      if (built[next]) return;
+      if (SCENES[next].key === "infohub" && !IH_LAYOUT.pos) { idle(prebuild); return; }
+      sceneAt(next); built[next].stop();
+    };
+    idle(prebuild);
   }
   function show(i, manual = false) {
     const prev = index;
@@ -1142,3 +1233,9 @@ document.querySelectorAll(".fthumb[data-thumb]").forEach((el) => {
   const draw = THUMBS[el.getAttribute("data-thumb")];
   if (draw) el.innerHTML = `<svg viewBox="0 0 240 120" preserveAspectRatio="xMidYMid meet">${draw()}</svg>`;
 });
+
+// CSS animations pause while their section is off screen.
+if ("IntersectionObserver" in window) {
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => e.target.classList.toggle("anim-off", !e.isIntersecting)));
+  document.querySelectorAll(".grow, .mock").forEach((el) => io.observe(el));
+}

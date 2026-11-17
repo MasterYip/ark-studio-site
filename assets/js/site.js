@@ -155,13 +155,19 @@
 
   // ---------------------------------------------------------------- language
   var english = new Map();
+  var shown = "en";
   function applyLang(l) {
     root.lang = l === "zh" ? "zh-CN" : "en";
-    document.querySelectorAll("[data-i18n]").forEach(function (el) {
-      var key = el.getAttribute("data-i18n");
-      if (!english.has(el)) english.set(el, el.innerHTML);
-      el.innerHTML = l === "zh" && ZH[key] ? ZH[key] : english.get(el);
-    });
+    // The page ships in English: only touch the text when the language changes.
+    if (l !== shown) {
+      document.querySelectorAll("[data-i18n]").forEach(function (el) {
+        var key = el.getAttribute("data-i18n");
+        if (!english.has(el)) english.set(el, el.innerHTML);
+        var html = l === "zh" && ZH[key] ? ZH[key] : english.get(el);
+        if (el.innerHTML !== html) el.innerHTML = html;
+      });
+      shown = l;
+    }
     document.querySelectorAll("[data-i18n-attr]").forEach(function (el) {
       el.getAttribute("data-i18n-attr").split("|").forEach(function (pair) {
         var parts = pair.split(":");
