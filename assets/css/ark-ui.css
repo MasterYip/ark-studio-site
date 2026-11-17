@@ -1,6 +1,6 @@
 /* ARK component styles for the live previews, extracted from ARK Studio
    ark_studio/web/css/app.css (commit f8df3be) by keeping the rules of the
-   rendered components and scoping them under .ark-ui. ARK Studio, MIT License,
+   rendered components and scoping them under .ark-ui. ARK Studio, GNU AGPL-3.0,
    Copyright (c) 2026 Raymon Yip. Regenerate instead of editing. */
 .ark-ui{color:var(--ink);font:0.875rem/1.5 var(--font);-webkit-font-smoothing:antialiased}
 .ark-ui button{font:inherit;color:inherit;border:0;background:none;cursor:default}

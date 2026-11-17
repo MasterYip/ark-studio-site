@@ -1,5 +1,5 @@
 // Copied unchanged from ARK Studio ark_studio/web/js/mind-layout.js (commit f8df3be).
-// ARK Studio, MIT License, Copyright (c) 2026 Raymon Yip. See site/assets/js/ark/LICENSE.
+// ARK Studio, GNU AGPL-3.0, Copyright (c) 2026 Raymon Yip. See site/assets/js/ark/LICENSE.
 // Re-copy instead of editing.
 // Mind map layout: hierarchy, tidy left-to-right trees and the orphan area.
 //

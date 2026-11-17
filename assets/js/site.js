@@ -7,7 +7,7 @@
 
   var ZH = {
     "nav.why": "为什么选 ARK",
-    "hero.lead": "建立在事实图谱上、人在回路中的自动化研究。想法长成研究地图，再变成正在运行的实验，智能体并行推进，一个人就能带领一支智能体团队。",
+    "hero.lead": "让 agent 承担执行，让每个结论都有来处的科研工作台。",
     "p1.t": "在事实图谱上生长的自动化研究",
     "p1.p": "从想法到研究地图再到实现，智能体在由论断、证据和实验组成的图谱上并行工作。你始终在回路中，每个结果都由你验收，一个人也能带领一支智能体团队。",
     "p1.v.idea": "想法", "p1.v.map": "研究地图", "p1.v.impl": "实现", "p1.v.q": "问题", "p1.v.claim": "论断",
@@ -19,71 +19,69 @@
     "p3.p": "多人和各自的智能体在同一个项目里并行工作，有负责人、共享看板和首页上的进度。账户、角色和项目授权决定谁能使用什么。",
     "g1": "事实图谱上的自动化研究", "g2": "代码库、机器和 GPU", "g3": "研究团队", "g4": "随处可用",
     "f.runs.t": "并行的智能体会话",
-    "f.runs.p": "从任务直接启动 Claude Code、Codex、DSH 或 OpenCode。权限模式、审批和每个会话独立的工作树让并行运行互不干扰，对话记录和文件都留在任务上。",
+    "f.runs.p": "Claude Code、Codex、DSH 或 OpenCode，各用一个工作树。",
     "f.res.t": "资源图",
-    "f.res.p": "设备、设备上的资源以及它们之间的连接，集中在一个只读视图中：哪些 GPU 由我们占用、哪些正忙、哪个仓库在哪台机器上。",
-    "f.acc.t": "账户与权限",
-    "f.acc.p": "组织角色、项目授权和限定范围的智能体令牌。个人设备和凭据只对其所有者可见。",
+    "f.res.p": "哪些机器在线、谁在使用，一目了然。",
+    "f.acc.t": "账户与角色",
+    "f.acc.p": "组织角色、项目授权，个人凭据只属于自己。",
     "tab.resources": "资源",
     "cap.resources": "资源：一台工作站、ARK 服务器和两台 GPU 服务器，标出我们的任务占用的 GPU 和他人使用的 GPU。示例数据。",
     "nav.about": "关于",
-    "mock.aria": "ARK Studio 动画演示：研究地图逐步生长，两个智能体执行实验，结果送来审阅并被验收。",
-    "mock.project": "预热研究",
+    "mock.aria": "ARK Studio 动画示例：研究地图从问题生长到结果，智能体执行任务，结果送来审阅。",
     "mock.home": "首页",
     "mock.research": "研究",
     "mock.map": "地图",
     "mock.execute": "执行",
     "mock.output": "产出",
-    "mock.live": "2 个智能体运行中",
-    "mock.t.q": "问题",
-    "mock.t.c": "论断",
-    "mock.t.e": "证据",
-    "mock.t.p": "相关工作",
-    "mock.t.x": "实验",
-    "mock.t.k": "任务",
     "mock.tasks": "任务",
     "mock.active": "进行中",
-    "mock.st.queued": "排队",
-    "mock.st.active": "进行中",
-    "mock.st.review": "待审阅",
-    "mock.st.done": "已完成",
-    "mock.task1": "运行预热扫描",
-    "mock.task2": "重跑基线，3 个种子",
-    "mock.task3": "绘制损失曲线",
     "about.eyebrow": "关于",
     "about.by": "开发者",
-    "about.p": "ARK Studio 由 MasterYip 设计和开发，以 MIT 许可证开源。欢迎在 GitHub 上提交问题和拉取请求。",
+    "about.p": "ARK Studio 由 MasterYip 设计和开发，以 <span class=\"nowrap\">GNU AGPL-3.0</span> 许可证开源。欢迎在 GitHub 上提交问题和拉取请求。",
     "about.affil": "所属机构",
-    "about.hit.zh": "哈尔滨工业大学",
+    "about.hit": "哈尔滨工业大学",
     "about.sii": "上海创智学院",
+    "lic.commercial": "提供商业授权：<a href=\"mailto:raymon-yip@qq.com\">raymon-yip@qq.com</a>",
+    "af.rp.aria": "RoboParty Lab 官方网站（在新标签页打开）",
+    "af.rp.title": "RoboParty Lab",
+    "af.hit.aria": "哈尔滨工业大学官方网站（在新标签页打开）",
+    "af.hit.title": "哈尔滨工业大学",
+    "af.sii.aria": "上海创智学院官方网站（在新标签页打开）",
+    "af.sii.title": "上海创智学院",
+    "about.rp": "RoboParty Lab",
+    "dl.lic": "v2.0.0 安装包采用 MIT 许可证；自下一个版本起采用 GNU AGPL-3.0。",
+    "close.title": "下一个发现，从这里开始。",
+    "mock.examples": "示例",
+    "f.apps.t": "桌面与移动端",
+    "f.apps.p": "Windows、macOS、Ubuntu 和 Android，本地或远程皆可。",
     "nav.how": "工作方式", "nav.features": "功能", "nav.shots": "预览", "nav.download": "下载",
     "nav.selfhost": "自托管", "nav.docs": "文档", "theme.toggle": "切换浅色和深色主题",
     "hero.eyebrow": "Auto-Research Kit · 开源",
-    "hero.title": "研究交给智能体，<br><span class=\"accent\">由你审阅和验收。</span>",
+    "hero.title": "一人执舵，<br><span class=\"accent\">众智同行。</span>",
         "hero.download": "下载", "hero.github": "在 GitHub 上查看",
-    "hero.note": "支持 Windows、macOS、Linux 和 Android，基于 MIT 许可证免费使用。", "hero.all": "全部下载",
+    "hero.note": "支持 Windows、macOS、Linux 和 Android，基于 <span class=\"nowrap\">GNU AGPL-3.0</span> 免费开源。", "hero.all": "全部下载",
     "hero.works": "可配合", "hero.http": "任意 HTTP 客户端",
     "how.eyebrow": "工作方式", "how.title": "从问题到验收，一条闭环",
-    "how.lead": "智能体完成繁琐的工作，并如实记录；方向由你定，决定由你做。",
-    "how.s1.t": "收集", "how.s1.p": "一个问题、一个想法或一篇论文都会成为一个节点，资料来源随之保留。",
-    "how.s2.t": "计划", "how.s2.p": "开始工作前，智能体先把计划写进任务节点，并关联到它所服务的论断或实验。",
-    "how.s3.t": "证据", "how.s3.p": "文献、数据和已有结果以支持或反驳的关系连到论断上，论证中的缺口一目了然。",
-    "how.s4.t": "执行", "how.s4.p": "智能体在受管会话中运行，带权限模式、工作树和 GPU 队列，进展写回任务节点。",
-    "how.s5.t": "审阅与验收", "how.s5.p": "结果以待审阅节点的形式连同图表一起到达。你可以验收、退回或做出决定，每个决定都会保留。",
+    "how.lead": "智能体做繁琐的工作并如实记录，方向由你定。",
+    "how.s1.t": "收集", "how.s1.p": "问题、想法和论文成为带来源的节点。",
+    "how.s2.t": "计划", "how.s2.p": "智能体先把计划写进任务节点。",
+    "how.s3.t": "证据", "how.s3.p": "资料连到论断上，论证的缺口一目了然。",
+    "how.s4.t": "执行", "how.s4.p": "智能体在带权限、工作树和 GPU 的会话中运行。",
+    "how.s5.t": "审阅与验收", "how.s5.p": "结果连同图表送来，由你验收或退回。",
     "who.you": "你", "who.agent": "智能体",
-    "how.note": "<strong>为长时间运行的智能体而设计。</strong>首页提供两段启动提示词：一段配置环境，一段启动研究团队。智能体读取项目上下文，遵循文档化的工作方式，在执行不可逆操作前先征求同意。",
-    "feat.eyebrow": "功能", "feat.title": "论证所需的一切，都在一处",
-    "feat.lead": "图、大纲、看板和时间线都是同一批记录的不同视图，从计划到执行，上下文不会丢失。",
-    "f.map.t": "研究地图", "f.map.p": "以力导向图、树、径向图或 Mind 布局浏览和编辑整个论证。筛选器、共享检查器和行内引用，在任何位置都打开同一个节点。",
-    "f.topic.t": "主题", "f.topic.p": "主题保存一张精选的子图，带有自己的大纲和布局：论文的故事线、相关工作图谱或实验流程，按你想要的方式呈现。",
-    "f.home.t": "首页总览", "f.home.p": "一屏看清项目状态：关键数字、研究流水线、团队负载、受阻或逾期的事项，以及等待你决定的条目。",
-    "f.agent.t": "智能体 API 与工作方式", "f.agent.p": "带版本的 HTTP API 和限定范围的个人令牌，让任何编码智能体都能读取上下文、创建和关联节点、附加媒体并汇报进展。计划放在任务节点，结果放在待审阅节点，你的选择放在决策节点。",
-    "f.setup.t": "项目环境登记", "f.setup.p": "每个项目登记一次代码仓库、运行环境、服务器和存储位置。智能体读取同一份登记，新会话一开始就有正确的代码和数据路径。",
-    "f.gpu.t": "GPU 服务器与队列", "f.gpu.p": "基于 SSH 的 GPU 发现和感知资源的队列，可在限额内让任务共用设备。智能体通过 API 提交、查看和取消任务。",
-    "f.plug.t": "插件", "f.plug.p": "工作台中的每个视图都是插件。你可以添加自己的视图：它们在沙箱中运行，声明所需权限，写入前会先确认。",
+    "how.note": "<strong>为长时间运行的智能体而设计。</strong>首页提供两段启动提示词：一段配置环境，一段启动研究团队。",
+    "feat.eyebrow": "功能", "feat.title": "一个工作台，全部到位",
+    "feat.lead": "图、看板和时间线，都基于同一批记录。",
+    "f.map.t": "研究地图", "f.map.p": "同一论证的力导向、树、径向和 Mind 视图。",
+    "f.topic.t": "主题", "f.topic.p": "为每条故事线或实验保存一张精选子图。",
+    "f.home.t": "首页总览", "f.home.p": "关键数字、研究流水线和等你处理的事项。",
+    "f.agent.t": "智能体 API", "f.agent.p": "限定范围的令牌，智能体读取上下文、写回结果。",
+    "f.setup.t": "项目环境登记", "f.setup.p": "代码仓库、运行环境和存储，只需登记一次。",
+    "f.gpu.t": "GPU 队列", "f.gpu.p": "通过 SSH 发现 GPU，在限额内共享使用。",
+    "f.plug.t": "插件", "f.plug.p": "添加自己的视图，在沙箱中运行。",
     "f.desk.t": "桌面应用", "f.desk.p": "支持 Windows、macOS 和 Ubuntu。用内置服务器在本机运行私有的 ARK，也能在同一窗口中打开你的 ARK 服务器，并提供托盘菜单。",
     "f.mob.t": "移动端", "f.mob.p": "响应式网页应用和两款 Android 应用。扫码配对手机，离开电脑也能审阅结果、验收工作。",
-    "f.srv.t": "自托管 Go 服务器", "f.srv.p": "一个 <code>ark-server</code> 可执行文件，内置纯 Go 的 SQLite。支持账户、反向代理下的 HTTPS、systemd 单元，项目文件夹可移植，便于备份和迁移。",
+    "f.srv.t": "自托管服务器", "f.srv.p": "一个 Go 可执行文件，自带 SQLite，部署在你的 HTTPS 之后。",
     "more": "了解更多",
     "shots.eyebrow": "实时预览", "shots.title": "真实界面，在本页中运行",
     "shots.lead": "这些视图使用 ARK 自己的地图渲染器、布局代码和样式，配一个小型示例项目，不连接任何服务器。",
@@ -116,8 +114,8 @@
     "d.mob.t": "移动端与远程访问", "d.mob.p": "Android 应用、配对、HTTPS 和隧道",
     "d.gpu.t": "GPU 服务器", "d.gpu.p": "SSH 探测、队列和资源策略",
     "d.all.t": "全部文档", "d.all.p": "使用指南、运维和开发",
-    "ft.releases": "版本发布", "ft.issues": "问题反馈", "ft.changelog": "更新日志", "ft.license": "MIT 许可证",
-    "ft.note": "ARK Studio 基于 MIT 许可证开源。",
+    "ft.releases": "版本发布", "ft.issues": "问题反馈", "ft.changelog": "更新日志", "ft.license": "GNU AGPL-3.0 许可证",
+    "ft.note": "ARK Studio 基于 <span class=\"nowrap\">GNU AGPL-3.0</span> 许可证开源。",
     // Download status lines (JS only).
     "os.windows": "检测到 Windows，已为你标出推荐的安装包。",
     "os.mac": "检测到 macOS，已为你标出推荐的安装包。",
@@ -150,10 +148,12 @@
       el.innerHTML = l === "zh" && ZH[key] ? ZH[key] : english.get(el);
     });
     document.querySelectorAll("[data-i18n-attr]").forEach(function (el) {
-      var parts = el.getAttribute("data-i18n-attr").split(":");
-      var store = "i18nEn" + parts[0].replace(/[^a-z]/gi, "");
-      if (!el.dataset[store]) el.dataset[store] = el.getAttribute(parts[0]) || "";
-      el.setAttribute(parts[0], l === "zh" && ZH[parts[1]] ? ZH[parts[1]] : el.dataset[store]);
+      el.getAttribute("data-i18n-attr").split("|").forEach(function (pair) {
+        var parts = pair.split(":");
+        var store = "i18nEn" + parts[0].replace(/[^a-z]/gi, "");
+        if (!el.dataset[store]) el.dataset[store] = el.getAttribute(parts[0]) || "";
+        el.setAttribute(parts[0], l === "zh" && ZH[parts[1]] ? ZH[parts[1]] : el.dataset[store]);
+      });
     });
     document.querySelectorAll("[data-lang]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === l));
@@ -289,6 +289,9 @@
     if (!release || !Array.isArray(release.assets)) return;
     var ver = document.getElementById("release-version");
     if (ver && release.tag_name) { ver.textContent = release.tag_name; ver.hidden = false; }
+    // The licence note covers v2.0.0 and earlier (MIT); a newer latest release is AGPL-3.0.
+    var lic = document.getElementById("dl-lic"), m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(release.tag_name || "");
+    if (lic && m && (+m[1] > 2 || (+m[1] === 2 && (+m[2] > 0 || +m[3] > 0)))) lic.hidden = true;
     Object.keys(PATTERNS).forEach(function (key) {
       var asset = release.assets.find(function (a) { return PATTERNS[key].test(a.name); });
       document.querySelectorAll('a[data-asset="' + key + '"]').forEach(function (link) {

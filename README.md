@@ -12,7 +12,7 @@ site/
                            release download links
   assets/js/ark-live.js    live previews: hero animation, Home, Map, Mind, Board, Resources
   assets/js/ark/           ARK frontend modules copied unchanged (graph-core, icons, arrows,
-                           node-card, mind-layout) with their MIT license
+                           node-card, mind-layout) with their license (GNU AGPL-3.0)
   assets/img/              brand lockups and icons; shots/home-light.webp is only the
                            social preview image
   tools/extract_ark_css.py regenerates ark-ui.css from app.css
@@ -48,8 +48,15 @@ The hero, the pillar visuals and the preview tabs are built in the page, not
 screenshots. `ark-live.js` renders a fixed, fictional demo project (a
 learning-rate warm-up study) with ARK's own code:
 
-* Map and hero: ARK's Force physics and node painter (`ark/graph-core.js`,
+* Hero: four example projects (training study, sim-to-real robotics, paper
+  writing, an agent team) laid out in columns from question to results and
+  drawn with ARK's node painter (`drawForceNode`, `typeColor`). Each plays a
+  short story, then cross-fades to the next; the scene switcher under the
+  window picks one, hover or focus pauses.
+* Map tab: ARK's Force physics and node painter (`ark/graph-core.js`,
   `stepForce`, `drawForceNode`, arrowheads) on a canvas.
+* Feature thumbnails: small SVGs built from the same pieces (node glyphs in
+  ARK's type colours, node cards, task bars, agent badges, GPU meters).
 * Mind: ARK's Mind layout and card sizing (`ark/mind-layout.js`,
   `ark/node-card.js`); cards are painted the way `graph.js` paints them.
 * Home and Board: the markup ARK renders for KPI tiles, Needs you, the
@@ -65,6 +72,24 @@ To update after ARK changes, copy the five modules again from
 `ark_studio/web/js/` (keep the three-line header) and rerun
 `tools/extract_ark_css.py`. The full `GraphView` is not used: it imports the
 API client and app state (48 files).
+
+## Affiliation logos
+
+`assets/img/logos/` holds the four logos, each used only as a mask so the page
+fills them with one neutral colour:
+
+* RoboParty Lab (`roboparty.svg`), SII (`sii.svg`, its bitmap emblem
+  re-encoded at a smaller size) and SFTR (`sftr.svg`): the public logo set of
+  the author's profile site.
+* HIT (`hit.svg`): no official vector of this lockup was found on Wikimedia
+  Commons or on hit.edu.cn. It is a potrace trace (potracer 0.0.4, alpha
+  threshold 110, turdsize 6, alphamax 1.0) of the official bitmap
+  <https://www.hit.edu.cn/_upload/site/00/ee/238/logo.png> (2914 x 678), the
+  same image as the profile site's `hit-white.png`.
+
+Links: RoboParty Lab <https://lab.roboparty.com/>, HIT
+<https://www.hit.edu.cn/>, SII <https://www.sii.edu.cn/>. SFTR has no link: no
+verifiable official page was found.
 
 ## Publishing
 
@@ -90,3 +115,15 @@ Before publishing, audit the folder:
 ```sh
 python scripts/release/publish_public.py --audit site
 ```
+
+## License
+
+ARK Studio is licensed under the GNU AGPL-3.0 from the release after v2.0.0
+(v2.0.0 and earlier are MIT). Commercial licences: raymon-yip@qq.com.
+
+Within `site/`, the ARK modules in `assets/js/ark/` and the rules extracted
+into `assets/css/ark-ui.css` come from ARK Studio and are under the GNU
+AGPL-3.0 (`assets/js/ark/LICENSE`). The site's own files (`index.html`,
+`assets/css/site.css`, `assets/js/site.js`, `assets/js/ark-live.js`,
+`tools/`) keep the MIT License they were written under.
+

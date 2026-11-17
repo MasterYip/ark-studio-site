@@ -1,5 +1,5 @@
 // Copied unchanged from ARK Studio ark_studio/web/js/icons.js (commit f8df3be).
-// ARK Studio, MIT License, Copyright (c) 2026 Raymon Yip. See site/assets/js/ark/LICENSE.
+// ARK Studio, GNU AGPL-3.0, Copyright (c) 2026 Raymon Yip. See site/assets/js/ark/LICENSE.
 // Re-copy instead of editing.
 const NS = "http://www.w3.org/2000/svg";
 

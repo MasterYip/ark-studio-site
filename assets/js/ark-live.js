@@ -22,7 +22,7 @@ const TYPES = {
   story: ["Story", "故事线"], question: ["Question", "问题"], claim: ["Claim", "论断"], evidence: ["Evidence", "证据"],
   related_work: ["Related work", "相关工作"], experiment: ["Experiment", "实验"], method: ["Method", "方法"],
   task: ["Task", "任务"], artifact: ["Artifact", "产物"], decision: ["Decision", "决策"], idea: ["Idea", "想法"],
-  production: ["Production", "产出"],
+  production: ["Production", "产出"], milestone: ["Milestone", "里程碑"],
 };
 // id, type, status, parent (part_of), English, Chinese
 const DEMO = [
@@ -450,100 +450,329 @@ document.addEventListener("ark-live-shown", (e) => {
 });
 
 // ----------------------------------------------------------------- Hero
-// The research map grows on ARK's Force renderer while two agents move between
-// nodes, tasks progress on the side and a result arrives in "Needs you".
-const hero = document.getElementById("mock");
-if (hero) {
-  const host = hero.querySelector(".mock-map-canvas");
-  const needsHost = hero.querySelector(".mock-needs");
-  const agents = { A1: { x: 0, y: 0, to: null, color: "#a78bfa", on: false }, A2: { x: 0, y: 0, to: null, color: "#f472b6", on: false } };
-  const fc = new ForceCanvas(host, { minLabelDegree: 2, fitPad: 34, insetRight: (w) => (w > 700 ? Math.min(420, w * 0.42) : 0), overlay: (ctx, view) => {
-    for (const [name, a] of Object.entries(agents)) {
-      if (!a.on || !a.to || !view.byId.get(a.to)) continue;
-      const s = view.screen(view.byId.get(a.to));
-      const tx = s.x + 13, ty = s.y - 13;
-      if (!a.placed) { a.x = tx; a.y = ty; a.placed = true; }
-      a.x += (tx - a.x) * 0.12; a.y += (ty - a.y) * 0.12;
-      ctx.beginPath(); ctx.arc(a.x, a.y, 10, 0, Math.PI * 2); ctx.fillStyle = a.color; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = view.pal.bg; ctx.stroke();
-      ctx.fillStyle = "#fff"; ctx.font = "700 9px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+// A carousel of small fictional projects. Each scene lays its map out in
+// columns (question → claims → work → results), so the structure reads at a
+// glance; nodes use ARK's node painter (drawForceNode, typeColor). Agents move
+// between nodes, tasks go queued → active → review → done and a result arrives
+// in ARK's Needs-you row. Scenes cross-fade; the dots switch them; hover or
+// focus pauses; reduced motion shows a settled frame per scene.
+const SCENES = [
+  {
+    key: "ml", name: ["Training study", "训练研究"], project: ["Warm-up study", "预热研究"],
+    cols: [["Question", "问题"], ["Claims", "论断"], ["Experiments", "实验"], ["Results", "结果"]],
+    nodes: [
+      ["Q", "question", 0, 1.5, "Does warm-up stop loss spikes?", "预热能消除损失尖峰吗？"],
+      ["C1", "claim", 1, 0.8, "Warm-up removes early spikes", "预热消除早期尖峰"],
+      ["C2", "claim", 1, 2.2, "Final loss is unchanged", "最终损失不变"],
+      ["X1", "experiment", 2, 0.8, "Warm-up sweep", "预热扫描"],
+      ["X2", "experiment", 2, 2.2, "Baseline, 3 seeds", "基线，3 个种子"],
+      ["R1", "evidence", 3, 0.8, "No spikes in 3 seeds", "3 个种子均无尖峰"],
+      ["R2", "evidence", 3, 2.2, "Loss within 0.02", "损失差在 0.02 内"],
+    ],
+    edges: [["Q", "C1"], ["Q", "C2"], ["C1", "X1"], ["C2", "X2"], ["X1", "R1"], ["X2", "R2"]],
+    agents: [["A1", "#a78bfa"], ["A2", "#f472b6"]],
+    tasks: [["T-0011", "Run warm-up sweep", "运行预热扫描", "A1", "X1", "R1"], ["T-0013", "Rerun baseline", "重跑基线", "A2", "X2", "R2"], ["T-0012", "Plot loss curves", "绘制损失曲线", "A1", null, null]],
+    res: ["gpu-server-1", ["4 GPUs", "4 块 GPU"], ["GPU 0", "GPU 1", "GPU 2", "GPU 3"]],
+    needs: ["R-0001", "No spikes in 3 seeds", "3 个种子均无尖峰", "500-step warm-up: no step above 1.5x the running mean.", "500 步预热：没有超过滑动均值 1.5 倍的步。"],
+  },
+  {
+    key: "robot", name: ["Robotics", "机器人"], project: ["Sim-to-real walking", "仿真到实机行走"],
+    cols: [["Question", "问题"], ["Claims", "论断"], ["Experiments", "实验"], ["Results", "结果"]],
+    nodes: [
+      ["Q", "question", 0, 1.5, "Does the sim policy walk on hardware?", "仿真策略能在实机上行走吗？"],
+      ["C1", "claim", 1, 0.8, "Randomized dynamics close the gap", "动力学随机化缩小差距"],
+      ["C2", "claim", 1, 2.2, "Control loop stays under 20 ms", "控制回路低于 20 ms"],
+      ["X1", "experiment", 2, 0.8, "Train in sim, 4k envs", "仿真训练，4k 环境"],
+      ["X2", "experiment", 2, 2.2, "Trial on humanoid-01", "humanoid-01 实机试验"],
+      ["R1", "evidence", 3, 0.8, "Walks 50 m, 2 falls", "行走 50 米，摔倒 2 次"],
+      ["R2", "evidence", 3, 2.2, "Loop latency 14 ms", "回路延迟 14 ms"],
+    ],
+    edges: [["Q", "C1"], ["Q", "C2"], ["C1", "X1"], ["C2", "X2"], ["X1", "R1"], ["X2", "R2"]],
+    agents: [["A1", "#a78bfa"], ["A2", "#f472b6"]],
+    tasks: [["T-0021", "Train policy in sim", "仿真训练策略", "A1", "X1", "R1"], ["T-0022", "Deploy to humanoid-01", "部署到 humanoid-01", "A2", "X2", "R2"], ["T-0023", "Record trial video", "录制试验视频", "A2", null, null]],
+    res: ["humanoid-01", ["robot · lab", "机器人 · 实验室"], ["robot", "GPU 0", "GPU 1", "camera"]],
+    needs: ["R-0021", "Hardware trial: walks 50 m", "实机试验：行走 50 米", "Two falls on the turn. Video and joint logs attached.", "转弯处摔倒两次，已附视频和关节日志。"],
+  },
+  {
+    key: "paper", name: ["Paper writing", "论文写作"], project: ["Workshop paper", "研讨会论文"],
+    cols: [["Question", "问题"], ["Claims", "论断"], ["Related work", "相关工作"], ["Sections", "章节"]],
+    nodes: [
+      ["Q", "question", 0, 1.5, "What should the paper claim?", "论文要主张什么？"],
+      ["C1", "claim", 1, 0.8, "Warm-up removes early spikes", "预热消除早期尖峰"],
+      ["C2", "claim", 1, 2.2, "It costs one extra setting", "只多一个超参数"],
+      ["W1", "related_work", 2, 0.8, "Goyal et al. 2017", "Goyal 等 2017"],
+      ["W2", "related_work", 2, 2.2, "Liu et al. 2020", "Liu 等 2020"],
+      ["S1", "production", 3, 0.8, "Introduction", "引言"],
+      ["S2", "production", 3, 2.2, "Method and results", "方法与结果"],
+    ],
+    edges: [["Q", "C1"], ["Q", "C2"], ["C1", "W1"], ["C2", "W2"], ["W1", "S1"], ["W2", "S2"]],
+    agents: [["WR", "#22d3ee"], ["RV", "#f59e0b"]],
+    tasks: [["T-0031", "Summarise related work", "整理相关工作", "WR", "W1", "S1"], ["T-0032", "Check citations", "核对引用", "RV", "W2", "S2"], ["T-0033", "Draft introduction", "撰写引言", "WR", null, null]],
+    res: ["paper repo", ["main.tex", "main.tex"], ["intro", "method", "results", "refs"]],
+    needs: ["S-0001", "Introduction draft, 2 pages", "引言初稿，2 页", "Gap, method, result in three paragraphs. 14 citations checked.", "三段写清缺口、方法和结果，已核对 14 条引用。"],
+  },
+  {
+    key: "code", name: ["Agent team", "智能体团队"], project: ["Release 2.1", "2.1 版本"],
+    cols: [["Goal", "目标"], ["Features", "功能"], ["Tasks", "任务"], ["Reviews", "审阅"]],
+    nodes: [
+      ["G", "milestone", 0, 1.5, "Ship release 2.1", "发布 2.1 版本"],
+      ["F1", "idea", 1, 0.8, "Topic canvas", "主题画布"],
+      ["F2", "idea", 1, 2.2, "Project export", "项目导出"],
+      ["T1", "task", 2, 0.8, "Canvas layout", "画布布局"],
+      ["T2", "task", 2, 2.2, "Export dialog", "导出对话框"],
+      ["V1", "evidence", 3, 0.8, "PR #212 checks pass", "PR #212 检查通过"],
+      ["V2", "evidence", 3, 2.2, "PR #214 checks pass", "PR #214 检查通过"],
+    ],
+    edges: [["G", "F1"], ["G", "F2"], ["F1", "T1"], ["F2", "T2"], ["T1", "V1"], ["T2", "V2"]],
+    agents: [["CX", "#60a5fa"], ["CL", "#f97316"]],
+    tasks: [["T-0051", "Canvas layout", "画布布局", "CX", "T1", "V1"], ["T-0052", "Export dialog", "导出对话框", "CL", "T2", "V2"], ["T-0053", "Release notes", "发布说明", "CL", null, null]],
+    res: ["ci-runner", ["4 jobs", "4 个作业"], ["lint", "unit", "e2e", "build"]],
+    needs: ["V-0212", "PR #212: canvas layout", "PR #212：画布布局", "All 46 checks pass. Screenshots of both themes attached.", "46 项检查全部通过，已附浅色和深色截图。"],
+  },
+];
+
+class SceneMap {
+  constructor(host) {
+    this.host = host;
+    this.canvas = h("canvas", { "aria-hidden": "true" });
+    host.append(this.canvas);
+    this.ctx = this.canvas.getContext("2d");
+    this.scene = null; this.shown = new Map(); this.links = new Map(); this.agents = {}; this.done = new Set();
+    this.pal = palette(host);
+    new ResizeObserver(() => this.resize()).observe(host);
+    refreshers.add(() => { this.pal = palette(host); this.draw(); });
+    this.resize();
+  }
+  resize() {
+    const r = this.host.getBoundingClientRect(), dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    this.w = Math.max(1, r.width); this.h = Math.max(1, r.height); this.dpr = dpr;
+    this.canvas.width = Math.round(this.w * dpr); this.canvas.height = Math.round(this.h * dpr);
+    this.canvas.style.width = this.w + "px"; this.canvas.style.height = this.h + "px";
+    this.draw();
+  }
+  set(scene) { this.scene = scene; this.shown.clear(); this.links.clear(); this.agents = {}; this.done.clear(); this.draw(); }
+  // Screen position of a node: columns spread across the width, rows in the
+  // band above the Needs-you card.
+  pos(node) {
+    const cols = this.scene.cols.length, colW0 = this.w / cols, padX = Math.min(90, colW0 / 2);
+    const top = 50, bottom = this.h * (this.w > 640 ? 0.45 : 0.5);
+    const colW = (this.w - padX * 2) / (cols - 1);
+    const rowH = (this.h - top - bottom) / 3;
+    return { x: padX + node[2] * colW, y: top + node[3] * rowH, colW: Math.min(colW, padX * 2) };
+  }
+  show(id) { this.shown.set(id, performance.now()); }
+  link(a, b) { this.links.set(a + ">" + b, performance.now()); }
+  agentTo(name, id) {
+    const a = this.agents[name] || (this.agents[name] = { x: null, y: null });
+    a.to = id;
+  }
+  draw(now = performance.now(), settled = false) {
+    const { ctx, pal, scene } = this;
+    if (!ctx) return;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, this.w, this.h);
+    if (!scene) return;
+    const grow = (t) => (settled || t == null ? 1 : Math.min(1, (now - t) / 420));
+    const byId = new Map(scene.nodes.map((n) => [n[0], n]));
+    // Column headings.
+    ctx.font = "700 10px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillStyle = alpha(pal.sub, 0.8);
+    scene.cols.forEach((c, i) => {
+      const p = this.pos([null, null, i, 0]);
+      ctx.fillText(L(...c).toUpperCase(), p.x, 16);
+    });
+    // Links: smooth left-to-right curves that draw in.
+    ctx.lineWidth = 1.4;
+    for (const [key, t] of this.links) {
+      const [a, b] = key.split(">"), pa = this.pos(byId.get(a)), pb = this.pos(byId.get(b)), k = grow(t);
+      const mx = (pa.x + pb.x) / 2;
+      ctx.strokeStyle = alpha(pal.sub, 0.45);
+      ctx.beginPath();
+      const steps = 24;
+      for (let i = 0; i <= steps * k; i++) {
+        const u = i / steps, v = 1 - u;
+        const x = v * v * v * pa.x + 3 * v * v * u * mx + 3 * v * u * u * mx + u * u * u * pb.x;
+        const y = v * v * v * pa.y + 3 * v * v * u * pa.y + 3 * v * u * u * pb.y + u * u * u * pb.y;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    // Nodes with wrapped labels that stay inside their column.
+    for (const [id, t] of this.shown) {
+      const n = byId.get(id), p = this.pos(n), k = grow(t);
+      const status = this.done.has(id) ? "done" : n[1] === "question" || n[1] === "milestone" ? "active" : "open";
+      ctx.globalAlpha = k;
+      drawForceNode(ctx, { status }, p.x, p.y, 11 * (0.5 + 0.5 * k), typeColor(n[1]), pal.bg);
+      ctx.font = "600 11.5px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "top";
+      const lines = wrap(ctx, L(n[4], n[5]), Math.min(150, p.colW - 10), 2);
+      lines.forEach((line, i) => {
+        ctx.lineWidth = 3; ctx.strokeStyle = alpha(pal.bg, 0.9); ctx.lineJoin = "round";
+        ctx.strokeText(line, p.x, p.y + 16 + i * 14);
+        ctx.fillStyle = pal.ink; ctx.fillText(line, p.x, p.y + 16 + i * 14);
+      });
+      ctx.globalAlpha = 1;
+    }
+    // Agent badges glide to their node.
+    const colors = Object.fromEntries(scene.agents);
+    for (const [name, a] of Object.entries(this.agents)) {
+      if (!a.to || !this.shown.has(a.to)) continue;
+      const p = this.pos(byId.get(a.to)), tx = p.x + 13, ty = p.y - 13;
+      if (a.x == null || settled) { a.x = tx; a.y = ty; }
+      a.x += (tx - a.x) * 0.1; a.y += (ty - a.y) * 0.1;
+      ctx.beginPath(); ctx.arc(a.x, a.y, 10, 0, Math.PI * 2); ctx.fillStyle = colors[name]; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = pal.bg; ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.font = "700 8.5px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(name, a.x, a.y + 0.5);
     }
-  } });
-  const SEQ = ["S-0001", "Q-0001", "Q-0002", "C-0001", "R-0001", "C-0002", "C-0003", "X-0001", "R-0002", "X-0002", "T-0011", "T-0013", "E-0001", "A-0002", "E-0002", "D-0001"];
-  const byDemo = new Map(DEMO.map((d) => [d[0], d]));
-  const nodeOf = (id) => { const [, type, status, parent, en, cn] = byDemo.get(id); return { id, type, status, parent, title: L(en, cn) }; };
-  const linkFor = (id) => {
-    const d = byDemo.get(id), out = [];
-    if (d[3]) out.push({ source: id, target: d[3], relation: "part_of" });
-    for (const [a, b] of CROSS) if (a === id && fc.byId.has(b)) out.push({ source: a, target: b, relation: "supports" });
-    return out;
-  };
-  const tasks = [...hero.querySelectorAll(".ms-task")];
-  const setTask = (i, state, pct) => {
-    tasks[i].setAttribute("data-state", state);
-    if (pct != null) tasks[i].querySelector(".mt-bar i").style.width = pct + "%";
-    hero.querySelector("#mock-active").textContent = hero.querySelectorAll('.ms-task[data-state="active"]').length;
-  };
-  const gpu = (id, on) => hero.querySelector("#" + id).classList.toggle("ours", on);
-  const renderNeeds = (state) => {
-    needsHost.replaceChildren(needsPanel([{ uid: "E-0001", title: L("3 seeds, no spikes with warm-up", "3 个种子，预热后无尖峰"),
-      excerpt: L("500-step warm-up: no step above 1.5x the running mean in any seed.", "500 步预热：所有种子都没有超过滑动均值 1.5 倍的步。"), age: L("just now", "刚刚"), state }]));
-  };
-  let needsState = "";
-  refreshers.add(() => { renderNeeds(needsState); fc.nodes.forEach((n) => { n.title = nodeOf(n.id).title; }); });
-  renderNeeds("");
+  }
+}
 
-  function reset() {
-    fc.set([], []); fc.view = null;
-    for (const a of Object.values(agents)) { a.on = false; a.placed = false; a.to = null; }
-    tasks.forEach((_, i) => setTask(i, "queued", 0));
-    gpu("g0", false); gpu("g1", false);
-    hero.classList.remove("needs-on"); needsState = ""; renderNeeds("");
+const hero = document.getElementById("mock");
+if (hero) {
+  const map = new SceneMap(hero.querySelector(".mock-map-canvas"));
+  const needsHost = hero.querySelector(".mock-needs");
+  const list = hero.querySelector(".ms-list");
+  const nav = document.querySelector(".scene-nav");
+  let index = 0, scene = SCENES[0], timers = [], frame = 0, running = false, paused = false, visible = true;
+  const st = (en, cn) => h("i", { class: "s-" + en.toLowerCase() }, L(en, cn));
+  function renderSide() {
+    hero.querySelector(".mock-proj-name").textContent = L(...scene.project);
+    hero.querySelector(".mock-live-text").textContent = L(`${scene.agents.length} agents running`, `${scene.agents.length} 个智能体运行中`);
+    hero.querySelector(".mock-legend").replaceChildren(...[...new Set(scene.nodes.map((n) => n[1]))]
+      .map((type) => h("span", { style: `--c:${typeColor(type)}` }, L(...TYPES[type] || [type, type]))));
+    const colors = Object.fromEntries(scene.agents);
+    list.replaceChildren(...scene.tasks.map(([uid, en, cn, ag]) => h("div", { class: "ms-task", "data-state": "queued" },
+      h("div", { class: "mt-row" }, h("span", { class: "mt-uid" }, uid),
+        h("span", { class: "mt-st" }, st("Queued", "排队"), st("Active", "进行中"), st("Review", "待审阅"), st("Done", "已完成"))),
+      h("div", { class: "mt-title" }, L(en, cn)),
+      h("div", { class: "mt-foot" }, h("span", { class: "mt-ag", style: `background:${colors[ag]}` }, ag), h("span", { class: "mt-bar" }, h("i"))))));
+    hero.querySelector(".ms-res-name").textContent = scene.res[0];
+    hero.querySelector(".ms-res-kind").textContent = L(...scene.res[1]);
+    hero.querySelector(".ms-gpus").replaceChildren(...scene.res[2].map((label) => h("i", { title: label })));
+    renderNeeds("");
   }
-  const grow = (id) => { if (!fc.byId.has(id)) fc.add(nodeOf(id), linkFor(id)); };
-  const agentTo = (name, id) => { agents[name].on = true; agents[name].to = id; };
-  const STEPS = [
-    [100, () => grow("S-0001")], [600, () => grow("Q-0001")], [900, () => { grow("Q-0002"); agentTo("A1", "Q-0001"); }],
-    [1400, () => { grow("C-0001"); agentTo("A1", "C-0001"); }], [1800, () => grow("R-0001")],
-    [2200, () => { grow("C-0002"); agentTo("A2", "C-0002"); }], [2600, () => grow("C-0003")],
-    [3100, () => { grow("X-0001"); agentTo("A1", "X-0001"); setTask(0, "active", 10); gpu("g0", true); }],
-    [3500, () => grow("R-0002")],
-    [3900, () => { grow("X-0002"); agentTo("A2", "X-0002"); setTask(1, "active", 8); gpu("g1", true); }],
-    [4400, () => { grow("T-0011"); setTask(0, "active", 45); }], [4900, () => { grow("T-0013"); setTask(1, "active", 30); }],
-    [6000, () => { setTask(0, "active", 100); setTask(1, "active", 60); }],
-    [6800, () => { grow("E-0001"); grow("A-0002"); agentTo("A1", "E-0001"); setTask(0, "review", 100); gpu("g0", false); }],
-    [7300, () => { hero.classList.add("needs-on"); setTask(2, "active", 20); }],
-    [8900, () => { needsState = "pressing"; renderNeeds(needsState); }],
-    [9200, () => { needsState = "accepted"; renderNeeds(needsState); setTask(0, "done", 100); grow("D-0001"); fc.byId.get("E-0001").status = "done"; }],
-    [9900, () => { grow("E-0002"); agentTo("A2", "E-0002"); setTask(1, "active", 100); setTask(2, "active", 70); }],
-    [10800, () => { hero.classList.remove("needs-on"); setTask(1, "review", 100); gpu("g1", false); }],
-    [12600, () => hero.classList.add("fade")],
-    [13200, () => { hero.classList.remove("fade"); reset(); }],
-  ];
-  const LOOP = 13400;
-  let timers = [], running = false;
-  const clear = () => { timers.forEach(clearTimeout); timers = []; };
-  const cycle = () => { clear(); reset(); STEPS.forEach(([t, fn]) => timers.push(setTimeout(fn, t))); timers.push(setTimeout(cycle, LOOP)); };
-  function composed() {
-    clear(); reset();
-    SEQ.forEach(grow);
-    fc.nodes.forEach((n) => { n.born = null; }); fc.edges.forEach((e) => { e.born = null; });
-    fc.settle(260); fc.fit(true);
-    agentTo("A1", "E-0001"); agentTo("A2", "X-0002");
-    setTask(0, "review", 100); setTask(1, "active", 70); setTask(2, "active", 30); gpu("g1", true);
+  function renderNeeds(state) {
+    const [uid, en, cn, xen, xcn] = scene.needs;
+    needsHost.replaceChildren(needsPanel([{ uid, title: L(en, cn), excerpt: L(xen, xcn), age: L("just now", "刚刚"), state }]));
+  }
+  function setTask(i, state, pct) {
+    const t = list.children[i];
+    if (!t) return;
+    t.setAttribute("data-state", state);
+    if (pct != null) t.querySelector(".mt-bar i").style.width = pct + "%";
+    hero.querySelector("#mock-active").textContent = list.querySelectorAll('.ms-task[data-state="active"]').length;
+  }
+  const cell = (i, on) => hero.querySelectorAll(".ms-gpus i")[i]?.classList.toggle("ours", on);
+  function renderNav() {
+    nav.replaceChildren(...SCENES.map((s, i) => h("button", { type: "button", class: "scene-dot", "aria-pressed": String(i === index),
+      "aria-label": L(...s.name) }, h("i"), h("span", null, L(...s.name)))));
+    [...nav.children].forEach((b, i) => b.addEventListener("click", () => go(i, true)));
+  }
+  // The story of one scene, as [ms, action] steps.
+  function steps() {
+    const [t1, t2] = scene.tasks, [a1, a2] = scene.agents.map((a) => a[0]);
+    const S = [];
+    const at = (ms, fn) => S.push([ms, fn]);
+    at(150, () => map.show(scene.nodes[0][0]));
+    at(700, () => { map.show(scene.nodes[1][0]); map.link(scene.nodes[0][0], scene.nodes[1][0]); map.agentTo(a1, scene.nodes[1][0]); });
+    at(1100, () => { map.show(scene.nodes[2][0]); map.link(scene.nodes[0][0], scene.nodes[2][0]); map.agentTo(a2, scene.nodes[2][0]); });
+    at(1800, () => { map.show(t1[4]); map.link(scene.nodes[1][0], t1[4]); map.agentTo(a1, t1[4]); setTask(0, "active", 15); cell(0, true); });
+    at(2300, () => { map.show(t2[4]); map.link(scene.nodes[2][0], t2[4]); map.agentTo(a2, t2[4]); setTask(1, "active", 10); cell(1, true); });
+    at(3300, () => { setTask(0, "active", 70); setTask(1, "active", 45); });
+    at(4600, () => { setTask(0, "review", 100); map.show(t1[5]); map.link(t1[4], t1[5]); map.agentTo(a1, t1[5]); cell(0, false); });
+    at(5100, () => { hero.classList.add("needs-on"); setTask(2, "active", 20); });
+    at(6500, () => renderNeeds("pressing"));
+    at(6800, () => { renderNeeds("accepted"); setTask(0, "done", 100); map.done.add(t1[5]); });
+    at(7400, () => { setTask(1, "active", 100); setTask(2, "active", 60); });
+    at(8200, () => { hero.classList.remove("needs-on"); setTask(1, "review", 100); map.show(t2[5]); map.link(t2[4], t2[5]); map.agentTo(a2, t2[5]); cell(1, false); });
+    at(10200, () => go(index + 1));
+    return S;
+  }
+  function settle() {
+    for (const [ms, fn] of steps()) if (ms < 10200 && ms !== 6500) fn();
     hero.classList.add("needs-on");
-    fc.draw();
+    renderNeeds("");
+    map.draw(performance.now(), true);
   }
-  let visible = true;
-  const update = () => {
-    const go = visible && !document.hidden && !reduceMotion();
-    if (go && !running) { running = true; hero.classList.remove("static"); cycle(); fc.start(); }
-    else if (!go && running) { running = false; clear(); fc.stop(); composed(); }
-  };
+  const clear = () => { timers.forEach(clearTimeout); timers = []; };
+  function loop() { map.draw(); frame = requestAnimationFrame(loop); }
+  function play() {
+    clear();
+    hero.classList.remove("needs-on");
+    for (const [ms, fn] of steps()) timers.push(setTimeout(fn, ms));
+  }
+  function go(i, manual = false) {
+    index = (i + SCENES.length) % SCENES.length;
+    const switchTo = () => {
+      scene = SCENES[index]; map.set(scene); renderSide(); renderNav();
+      if (reduceMotion() || paused || !running) settle(); else play();
+      hero.classList.remove("switching");
+    };
+    clear();
+    if (reduceMotion() || manual && !running) { switchTo(); return; }
+    hero.classList.add("switching");
+    timers.push(setTimeout(switchTo, 450));
+  }
+  function update() {
+    const go_ = visible && !document.hidden && !reduceMotion() && !paused;
+    if (go_ && !running) { running = true; hero.classList.remove("static"); map.set(scene); renderSide(); play(); loop(); }
+    else if (!go_ && running) { running = false; clear(); cancelAnimationFrame(frame); map.set(scene); renderSide(); settle(); }
+  }
+  const wrapEl = hero.closest(".mock-wrap");
+  wrapEl.addEventListener("mouseenter", () => { paused = true; update(); });
+  wrapEl.addEventListener("mouseleave", () => { paused = false; update(); });
+  wrapEl.addEventListener("focusin", () => { paused = true; update(); });
+  wrapEl.addEventListener("focusout", (e) => { if (!wrapEl.contains(e.relatedTarget)) { paused = false; update(); } });
+  refreshers.add(() => { renderSide(); renderNav(); if (!running) settle(); });
   if ("IntersectionObserver" in window) new IntersectionObserver((e) => { visible = e[0].isIntersecting; update(); }, { threshold: 0.1 }).observe(hero);
   document.addEventListener("visibilitychange", update);
-  composed();
+  map.set(scene); renderSide(); renderNav(); settle();
   if (reduceMotion()) hero.classList.add("static");
   update();
 }
+
+// ------------------------------------------------------- feature thumbnails
+// Small vector pictures built from ARK's own pieces: node glyphs in ARK's type
+// colours, node cards with a type bar, task bars, agent badges, GPU meters.
+const TC = (t) => typeColor(t);
+const node = (x, y, type, r = 7) => `<circle cx="${x}" cy="${y}" r="${r + 3}" class="t-halo" style="fill:${TC(type)}"/><circle cx="${x}" cy="${y}" r="${r}" style="fill:${TC(type)}"/>`;
+const line = (x1, y1, x2, y2, dash = false) => `<path d="M${x1} ${y1} C${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}" class="t-edge${dash ? " dash" : ""}"/>`;
+const card = (x, y, w, type, lines = 1) => `<rect x="${x}" y="${y}" width="${w}" height="${14 + lines * 8}" rx="5" class="t-card"/><rect x="${x}" y="${y}" width="3.5" height="${14 + lines * 8}" rx="1.5" style="fill:${TC(type)}"/>` +
+  Array.from({ length: lines }, (_, i) => `<rect x="${x + 9}" y="${y + 7 + i * 8}" width="${(w - 22) * (i ? 0.6 : 1)}" height="4" rx="2" class="t-text"/>`).join("");
+const badge = (x, y, text, color) => `<circle cx="${x}" cy="${y}" r="9" style="fill:${color}"/><text x="${x}" y="${y + 3}" class="t-badge">${text}</text>`;
+const bar = (x, y, w, pct, cls = "t-fill") => `<rect x="${x}" y="${y}" width="${w}" height="5" rx="2.5" class="t-track"/><rect x="${x}" y="${y}" width="${w * pct}" height="5" rx="2.5" class="${cls}"/>`;
+const chip = (x, y, text) => `<rect x="${x}" y="${y - 8}" width="${text.length * 5.6 + 10}" height="13" rx="3" class="t-chip"/><text x="${x + 5}" y="${y + 1.5}" class="t-mono">${text}</text>`;
+const THUMBS = {
+  map: () => line(40, 60, 92, 34) + line(40, 60, 92, 86) + line(92, 34, 148, 26) + line(92, 34, 148, 58) + line(92, 86, 148, 92) + line(148, 26, 200, 40) + line(148, 58, 200, 40, true) +
+    node(40, 60, "question", 8) + node(92, 34, "claim") + node(92, 86, "claim") + node(148, 26, "experiment") + node(148, 58, "related_work", 6) + node(148, 92, "experiment") + node(200, 40, "evidence"),
+  topic: () => card(24, 18, 92, "story", 1) + line(116, 29, 132, 29) + card(132, 14, 84, "claim") + line(116, 29, 132, 57) + card(132, 46, 84, "experiment") + line(116, 29, 132, 89) + card(132, 78, 84, "evidence"),
+  api: () => `<rect x="22" y="16" width="148" height="88" rx="8" class="t-term"/>` +
+    [["GET", "/context", 40], ["POST", "/units", 62], ["POST", "/media", 84]].map(([m, pth, y]) => `<text x="34" y="${y}" class="t-mono t-acc">${m}</text><text x="70" y="${y}" class="t-mono t-term-ink">${pth}</text>`).join("") +
+    badge(196, 40, "A1", "#a78bfa") + `<path d="M186 46 L172 54" class="t-edge"/>` + card(178, 62, 46, "task"),
+  sessions: () => [["CX", "#60a5fa", 0.85, 26], ["CL", "#f97316", 0.55, 60], ["DS", "#22d3ee", 0.3, 94]].map(([n, c, p, y]) =>
+    badge(36, y, n, c) + `<rect x="54" y="${y - 6}" width="70" height="4" rx="2" class="t-text"/>` + bar(54, y + 2, 160, p)).join(""),
+  setup: () => [["REPO", 28], ["ENV", 60], ["DATA", 92]].map(([t, y]) => chip(26, y, t) + `<rect x="78" y="${y - 3}" width="${t === "ENV" ? 96 : 128}" height="5" rx="2.5" class="t-text"/><circle cx="214" cy="${y - 0.5}" r="4" class="t-ok"/>`).join(""),
+  gpu: () => [[0.92, "t-ours"], [0.88, "t-ours"], [0.64, "t-other"], [0.04, "t-fill"]].map(([p, c], i) =>
+    `<text x="26" y="${30 + i * 22}" class="t-mono">GPU ${i}</text>` + bar(64, 25 + i * 22, 150, p, c)).join(""),
+  resources: () => line(76, 60, 120, 34) + line(76, 60, 120, 86) +
+    `<rect x="18" y="42" width="58" height="36" rx="6" class="t-card"/><rect x="120" y="16" width="100" height="36" rx="6" class="t-card"/><rect x="120" y="68" width="100" height="36" rx="6" class="t-card"/>` +
+    `<circle cx="28" cy="52" r="3.5" class="t-ok"/><circle cx="130" cy="26" r="3.5" class="t-ok"/><circle cx="130" cy="78" r="3.5" class="t-ok"/>` +
+    `<rect x="36" y="49" width="32" height="5" rx="2.5" class="t-text"/>` + bar(130, 37, 80, 0.9, "t-ours") + bar(130, 89, 80, 0.45, "t-fill"),
+  home: () => [["24", "t-acc", 18], ["2", "t-warn", 90], ["7", "t-acc", 162]].map(([v, c, x]) =>
+    `<rect x="${x}" y="16" width="62" height="44" rx="7" class="t-card"/><rect x="${x + 8}" y="25" width="30" height="4" rx="2" class="t-text"/><text x="${x + 8}" y="51" class="t-num ${c}">${v}</text>`).join("") +
+    [[0.5, 0.2, 0.1], [0.3, 0.3, 0.2]].map(([a, b, c], i) => `<rect x="18" y="${74 + i * 16}" width="206" height="6" rx="3" class="t-track"/><rect x="18" y="${74 + i * 16}" width="${206 * a}" height="6" rx="3" class="t-done"/><rect x="${18 + 206 * a}" y="${74 + i * 16}" width="${206 * b}" height="6" class="t-fill"/><rect x="${18 + 206 * (a + b)}" y="${74 + i * 16}" width="${206 * c}" height="6" class="t-rev"/>`).join(""),
+  access: () => [["MY", "#60a5fa", "owner", 28], ["RL", "#f472b6", "member", 60], ["A1", "#a78bfa", "agent", 92]].map(([n, c, r, y]) =>
+    badge(36, y, n, c) + `<rect x="54" y="${y - 3}" width="64" height="5" rx="2.5" class="t-text"/>` + chip(150, y, r)).join(""),
+  server: () => `<rect x="22" y="18" width="196" height="84" rx="8" class="t-term"/><text x="34" y="42" class="t-mono t-term-ink">$ ark-server serve</text>` +
+    `<circle cx="38" cy="64" r="4" class="t-ok"/><text x="48" y="67" class="t-mono t-term-ink">https · sign-in</text><circle cx="38" cy="86" r="4" class="t-ok"/><text x="48" y="89" class="t-mono t-term-ink">sqlite · systemd</text>`,
+  apps: () => `<rect x="22" y="18" width="128" height="80" rx="7" class="t-card"/><rect x="22" y="18" width="128" height="12" rx="6" class="t-track"/>` +
+    line(46, 70, 76, 52) + line(76, 52, 110, 70) + node(46, 70, "question", 5) + node(76, 52, "claim", 5) + node(110, 70, "evidence", 5) +
+    `<rect x="166" y="14" width="52" height="92" rx="9" class="t-card"/>` + node(184, 46, "claim", 4) + node(202, 62, "evidence", 4) + line(184, 46, 202, 62) + `<rect x="176" y="80" width="32" height="10" rx="3" class="t-fill"/>`,
+  plugins: () => [[22, 16], [122, 16], [22, 64]].map(([x, y]) => `<rect x="${x}" y="${y}" width="94" height="40" rx="6" class="t-card"/><rect x="${x + 10}" y="${y + 11}" width="46" height="5" rx="2.5" class="t-text"/><rect x="${x + 10}" y="${y + 22}" width="66" height="4" rx="2" class="t-track"/>`).join("") +
+    `<rect x="122" y="64" width="94" height="40" rx="6" class="t-dashed"/><path d="M169 76 v16 M161 84 h16" class="t-plus"/>`,
+};
+document.querySelectorAll(".fthumb[data-thumb]").forEach((el) => {
+  const draw = THUMBS[el.getAttribute("data-thumb")];
+  if (draw) el.innerHTML = `<svg viewBox="0 0 240 120" preserveAspectRatio="xMidYMid meet">${draw()}</svg>`;
+});
