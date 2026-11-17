@@ -51,13 +51,17 @@ learning-rate warm-up study) with ARK's own code:
 * Hero: five scenes in one window, like segments of a short film, each
   with its own composition: the research map growing on ARK's Force
   renderer with agents, tasks, the GPU strip and an accept in Needs you;
-  import from InfoHub (a topic cluster dragged from the read-only InfoHub
-  graph into the ARK graph, pasted as ideas and picked up by an agent);
+  import from InfoHub (both graphs run ARK's force layout; the topic hub is
+  dragged across with its items trailing on springs, the items join the ARK
+  simulation, link up and are picked up by an agent);
   agents in parallel (Codex, Claude Code, DSH and OpenCode sessions with
   streaming logs, their presence on a small map); the review queue (select,
   bulk accept, send back with a note); and resources with the GPU queue
   (members, code and data, machines, GPU servers, jobs queued, running and
-  done). The switcher under the window picks a scene; hover or focus pauses.
+  done). The tour advances on its own; the switcher picks a scene; keyboard
+  focus in the switcher, a hidden tab or scrolling away pauses it. Hovering
+  shows ARK's hover states (node ring and neighbourhood, card and row hover)
+  without changing the story.
 * Map tab: ARK's Force physics and node painter (`ark/graph-core.js`,
   `stepForce`, `drawForceNode`, arrowheads) on a canvas.
 * Feature thumbnails: small SVGs built from the same pieces (node glyphs in

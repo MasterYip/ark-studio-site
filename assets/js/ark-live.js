@@ -122,7 +122,7 @@ new MutationObserver(() => refreshers.forEach((fn) => fn())).observe(root, { att
 // ------------------------------------------------------------ Force canvas
 // ARK's Force map: stepForce with GRAPH_DEFAULTS, drawForceNode, arrowheads.
 class ForceCanvas {
-  constructor(host, { labels = true, minLabelDegree = 0, overlay = null, fitPad = 40, insetRight = null, colorOf = null, labelOf = null, edgeStyle = null, radiusOf = null, padTop = 0, fitFilter = null } = {}) {
+  constructor(host, { labels = true, minLabelDegree = 0, overlay = null, fitPad = 40, insetRight = null, colorOf = null, labelOf = null, edgeStyle = null, radiusOf = null, padTop = 0, fitFilter = null, arrows = true, jiggle = 0, labelCollide = false, labelColorOf = null, padBottom = 0 } = {}) {
     this.host = host;
     this.canvas = h("canvas", { "aria-hidden": "true" });
     host.append(this.canvas);
@@ -131,10 +131,21 @@ class ForceCanvas {
     this.labels = labels; this.minLabelDegree = minLabelDegree; this.overlay = overlay; this.fitPad = fitPad; this.insetRight = insetRight;
     this.colorOf = colorOf || ((n) => typeColor(n.type));
     this.labelOf = labelOf; this.edgeStyle = edgeStyle; this.radiusOf = radiusOf; this.padTop = padTop; this.fitFilter = fitFilter;
+    this.arrows = arrows; this.jiggle = jiggle; this.labelCollide = labelCollide; this.labelColorOf = labelColorOf; this.padBottom = padBottom;
     this.view = null; this.running = false; this.visible = false; this.idle = 0;
     this.cfg = { ...GRAPH_DEFAULTS, distance: 46 };
     this.pal = palette(host);
     new ResizeObserver(() => this.resize()).observe(host);
+    // Hover as on ARK's map: ring on the node, its neighbourhood highlighted.
+    this.hover = null;
+    host.addEventListener("pointermove", (ev) => {
+      if (!this.view) return;
+      const r = host.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+      let best = null, bd = 14;
+      for (const n of this.nodes) { const s = this.screen(n), d = Math.hypot(s.x - x, s.y - y); if (d < bd) { bd = d; best = n; } }
+      if (best !== this.hover) { this.hover = best; host.style.cursor = best ? "pointer" : ""; if (!this.running) this.draw(); }
+    });
+    host.addEventListener("pointerleave", () => { if (this.hover) { this.hover = null; host.style.cursor = ""; if (!this.running) this.draw(); } });
     refreshers.add(() => { this.pal = palette(host); this.draw(); });
     this.resize();
   }
@@ -170,7 +181,7 @@ class ForceCanvas {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const n of (this.fitFilter ? this.nodes.filter(this.fitFilter) : this.nodes)) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y); }
     const pad = this.fitPad, right = this.insetRight ? this.insetRight(this.w) : 0, W = this.w - right;
-    const top = this.padTop || 0, H = this.h - top;
+    const top = this.padTop || 0, H = this.h - top - (this.padBottom || 0);
     const z = Math.min(1.5, (W - pad * 2) / Math.max(120, x1 - x0), (H - pad * 2) / Math.max(120, y1 - y0));
     const target = { z, x: W / 2 - ((x0 + x1) / 2) * z, y: top + H / 2 - ((y0 + y1) / 2) * z };
     if (!this.view || immediate) this.view = target;
@@ -182,7 +193,11 @@ class ForceCanvas {
     this.running = true;
     const tick = () => {
       if (!this.running) return;
-      if (this.idle < 600) { stepForce(this.nodes, this.edges, this.byId, this.cfg, null); this.idle++; }
+      if (this.jiggle) {
+        // A living graph: small random nudges keep the layout breathing.
+        for (const n of this.nodes) { n.vx += (Math.random() - 0.5) * this.jiggle; n.vy += (Math.random() - 0.5) * this.jiggle; }
+        stepForce(this.nodes, this.edges, this.byId, this.cfg, null);
+      } else if (this.idle < 600) { stepForce(this.nodes, this.edges, this.byId, this.cfg, null); this.idle++; }
       this.fit(false);
       this.draw();
       this.frame = requestAnimationFrame(tick);
@@ -201,6 +216,10 @@ class ForceCanvas {
     const grow = (t) => (t ? Math.min(1, (now - t) / 450) : 1);
     const z = this.view.z;
     const heads = new Path2D();
+    const hv = this.hover && this.byId.get(this.hover.id) === this.hover ? this.hover : null;
+    const nb = hv ? new Set([hv.id]) : null;
+    if (hv) for (const e of this.edges) { if (e.source === hv.id) nb.add(e.target); if (e.target === hv.id) nb.add(e.source); }
+    const rad = (n) => (this.radiusOf ? this.radiusOf(n) * Math.min(1.25, Math.max(0.7, z)) : forceNodeRadius(n, z, true));
     ctx.lineWidth = 1.2;
     for (const e of this.edges) {
       const a = this.byId.get(e.source), b = this.byId.get(e.target);
@@ -208,30 +227,58 @@ class ForceCanvas {
       const p = this.screen(a), q = this.screen(b);
       const k = grow(e.born);
       const dx = q.x - p.x, dy = q.y - p.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
-      const rb = forceNodeRadius(b, z, true) + 2;
+      const rb = rad(b) + 1.5;
       const ex = p.x + dx * k - ux * (k === 1 ? rb : 0), ey = p.y + dy * k - uy * (k === 1 ? rb : 0);
-      ctx.strokeStyle = this.edgeStyle ? this.edgeStyle(e) : alpha(pal.sub, e.relation === "part_of" ? 0.42 : 0.3);
+      const near = hv && (e.source === hv.id || e.target === hv.id);
+      ctx.strokeStyle = near ? alpha(pal.accent, 0.85) : this.edgeStyle ? this.edgeStyle(e) : alpha(pal.sub, e.relation === "part_of" ? 0.42 : 0.3);
+      ctx.globalAlpha = hv && !near ? 0.3 : 1; ctx.lineWidth = near ? 1.7 : 1.2;
       ctx.setLineDash(e.relation === "part_of" ? [] : [4, 4]);
       ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(ex, ey); ctx.stroke();
-      if (k === 1 && len > 30) addArrowhead(heads, ex, ey, ux, uy, arrowSize(1.2, z), "triangle");
+      if (this.arrows && k === 1 && len > 30) addArrowhead(heads, ex, ey, ux, uy, arrowSize(1, z, 0.55), "triangle");
     }
+    ctx.globalAlpha = 1; ctx.lineWidth = 1.2;
     ctx.setLineDash([]);
-    paintArrowheads(ctx, heads, "triangle", alpha(pal.sub, 0.55), pal.bg);
+    paintArrowheads(ctx, heads, "triangle", alpha(pal.sub, hv ? 0.25 : 0.45), pal.bg);
     ctx.font = "600 11px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif";
     ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const pending = [];
     for (const n of this.nodes) {
       const s = this.screen(n), k = grow(n.born);
-      const r = (this.radiusOf ? this.radiusOf(n) * Math.min(1.25, Math.max(0.7, z)) : forceNodeRadius(n, z, true)) * (0.4 + 0.6 * k);
-      ctx.globalAlpha = k;
+      const r = rad(n) * (0.4 + 0.6 * k);
+      const dim = nb && !nb.has(n.id) ? 0.3 : 1;
+      ctx.globalAlpha = k * dim;
       drawForceNode(ctx, n, s.x, s.y, r, this.colorOf(n), pal.bg);
-      const raw = this.labelOf ? this.labelOf(n) : (this.labels && (n.degree || 0) >= this.minLabelDegree ? n.title : null);
-      if (raw) {
+      if (n === hv) { ctx.beginPath(); ctx.arc(s.x, s.y, r + 4, 0, Math.PI * 2); ctx.strokeStyle = pal.accent; ctx.lineWidth = 2; ctx.stroke(); }
+      const raw = this.labelOf ? (this.labelOf(n) || (n === hv && n.title) || null) : ((this.labels && (n.degree || 0) >= this.minLabelDegree) || n === hv ? n.title : null);
+      if (raw && this.labelCollide) pending.push({ n, s, r, raw, k: k * dim });
+      else if (raw) {
         const max = zh() ? 12 : 24, text = raw.length > max ? raw.slice(0, max - 1) + "…" : raw;
         ctx.lineWidth = 3; ctx.strokeStyle = alpha(pal.bg, 0.85); ctx.lineJoin = "round";
         ctx.strokeText(text, s.x, s.y + r + 3);
         ctx.fillStyle = pal.ink; ctx.fillText(text, s.x, s.y + r + 3);
       }
       ctx.globalAlpha = 1;
+    }
+    if (pending.length) {
+      // Labels as ARK places them: most connected first, truncated, and a
+      // label that would overlap one already placed is left out.
+      const pri = (q) => (q.n === hv ? 2e6 : q.n.hub ? 1e6 : nb && nb.has(q.n.id) ? 1e5 : q.n.degree || 0);
+      pending.sort((a, b) => pri(b) - pri(a));
+      const placed = [];
+      // Node discs are obstacles too, except the label's own node.
+      const discs = this.nodes.map((m) => { const q = this.screen(m), rr = (this.radiusOf ? this.radiusOf(m) : 6) + 1; return [q.x - rr, q.y - rr, q.x + rr, q.y + rr, m]; });
+      for (const { n, s, r, raw, k } of pending) {
+        const max = zh() ? 11 : 22, text = raw.length > max ? raw.slice(0, max - 1) + "…" : raw;
+        const w = ctx.measureText(text).width, box = [s.x - w / 2 - 3, s.y + r + 2, s.x + w / 2 + 3, s.y + r + 17];
+        const hit = (b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1];
+        if (placed.some(hit) || (!n.hub && n !== hv && discs.some((d) => d[4] !== n && hit(d)))) continue;
+        placed.push(box);
+        ctx.globalAlpha = k;
+        ctx.lineWidth = 3; ctx.strokeStyle = alpha(pal.bg, 0.85); ctx.lineJoin = "round";
+        ctx.strokeText(text, s.x, s.y + r + 3);
+        ctx.fillStyle = this.labelColorOf ? this.labelColorOf(n, pal) : pal.ink; ctx.fillText(text, s.x, s.y + r + 3);
+        ctx.globalAlpha = 1;
+      }
     }
     this.overlay?.(ctx, this, now);
   }
@@ -791,17 +838,22 @@ function resourcesScene(pane) {
 }
 
 // ------------------------------------------- scene: import from InfoHub
-// As on Research › Ideas: InfoHub's read-only graph on the left (a faint
-// background of many items with one highlighted topic cluster), the editable
-// ARK graph on the right. The cluster is dragged across, dropped, pasted as
-// idea nodes around their hub, linked into the project and picked up by an
-// agent. Topics are fictional.
+// As on Research › Ideas: InfoHub's read-only graph on the left, the editable
+// ARK graph on the right, both running ARK's force layout. The topic hub is
+// grabbed and dragged across; its items trail on spring links; on drop they
+// join the ARK simulation, spread out among the existing nodes, then link up
+// and an agent picks them up. Topics are fictional.
 const IH_HUB = ["Tactile sensing", "触觉感知"];
 const IH_KIDS = [
   ["Tactile pretraining datasets", "触觉预训练数据集"], ["Slip detection in grasping", "抓取中的滑移检测"], ["Sim tactile rendering", "仿真触觉渲染"],
   ["Gel sensor wear", "凝胶传感器磨损"], ["Contact force estimation", "接触力估计"], ["Texture classification", "纹理分类"],
   ["Tactile-visual fusion", "触觉与视觉融合"], ["Calibration drift", "标定漂移"], ["In-hand pose tracking", "手内位姿跟踪"],
   ["Tactile policy learning", "触觉策略学习"], ["Low-cost sensor skins", "低成本电子皮肤"], ["Shear field imaging", "剪切场成像"],
+];
+// Other InfoHub topics (background): hub title and leaf count.
+const IH_BG = [
+  [["Locomotion", "足式运动"], 7], [["Benchmarks", "评测基准"], 6], [["Datasets", "数据集"], 8],
+  [["Sim-to-real", "仿真到实机"], 6], [["Reading group", "读书会"], 5], [["Hardware notes", "硬件笔记"], 6],
 ];
 const ARK_BASE = [
   ["q1", "question", "Does touch make grasping more reliable?", "触觉能让抓取更可靠吗？"],
@@ -810,7 +862,6 @@ const ARK_BASE = [
   ["s1", "source", "Paper feed", "论文订阅"],
   ["c2", "claim", "Vision alone misses contact events", "仅靠视觉会漏掉接触事件"],
 ];
-const BG_COUNT = 64;
 function infohubScene(pane) {
   pane.innerHTML = "";
   const panel = (cls) => h("div", { class: `ih-panel ${cls}` },
@@ -818,52 +869,41 @@ function infohubScene(pane) {
     h("div", { class: "ih-tools" }), h("div", { class: "ih-canvas" }),
     h("div", { class: "ih-legend" }), h("div", { class: "ih-stats" }));
   const left = panel("ih-left"), right = panel("ih-right");
-  const ghost = svgEl(`<svg class="ih-ghost" viewBox="0 0 120 90" aria-hidden="true">${
-    Array.from({ length: 10 }, (_, k) => { const a = k / 10 * Math.PI * 2, x = 60 + Math.cos(a) * 34, y = 45 + Math.sin(a) * 30; return `<path d="M60 45L${x.toFixed(1)} ${y.toFixed(1)}" class="g-e"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" class="g-n"/>`; }).join("")
-  }<circle cx="60" cy="45" r="10" class="g-hub"/><path d="M84 60 l0 18 l5 -5 l4 8 l3 -1.5 l-4 -8 l7 0 z" class="g-cur"/></svg>`);
+  const over = h("canvas", { class: "ih-over", "aria-hidden": "true" });
   const toast = h("div", { class: "ih-toast" });
-  pane.append(left, right, ghost, toast);
+  pane.append(left, right, over, toast);
+  const octx = over.getContext("2d");
   const IDEA = typeColor("idea"), BLUE = "#3b82f6";
-  let picked = false, pasted = false, agentTo = null;
+  const pal = () => palette(pane);
+  let agentTo = null, grabbed = false;
   const agent = { x: null, y: null };
-  const ih = new ForceCanvas(left.querySelector(".ih-canvas"), { fitPad: 70, padTop: 30, fitFilter: (n) => n.cluster,
-    colorOf: (n) => (n.cluster ? BLUE : alpha(palette(pane).sub, 0.35)),
-    labelOf: (n) => (n.hub || (n.cluster && n.labelled && ih.w > 420) ? n.title : null),
-    edgeStyle: (e) => (e.cluster ? alpha(BLUE, 0.65) : alpha(palette(pane).sub, 0.16)),
-    radiusOf: (n) => (n.hub ? 13 : n.cluster ? 6.5 : 4),
+  const ih = new ForceCanvas(left.querySelector(".ih-canvas"), { fitPad: 26, padTop: 30, padBottom: 24, arrows: false, jiggle: 0.05, labelCollide: true,
+    fitFilter: (n) => n.cluster || n.bgHub,
+    colorOf: (n) => (n.cluster ? (grabbed ? alpha(BLUE, 0.35) : BLUE) : alpha(pal().sub, n.bgHub ? 0.6 : 0.4)),
+    edgeStyle: (e) => (e.cluster ? alpha(BLUE, grabbed ? 0.25 : 0.55) : alpha(pal().sub, 0.2)),
+    radiusOf: (n) => (n.hub ? 11 : n.bgHub ? 6.5 : n.cluster ? 6 : 3.6),
+    labelOf: (n) => (n.cluster || n.bgHub ? n.title : null),
+    labelColorOf: (n, p) => (n.cluster && !grabbed ? p.ink : alpha(p.sub, 0.8)) });
+  const ark = new ForceCanvas(right.querySelector(".ih-canvas"), { fitPad: 26, padTop: 36, padBottom: 26, labelCollide: true, jiggle: 0.03,
+    colorOf: (n) => (n.base ? alpha(typeColor(n.type), 0.55) : typeColor(n.type)),
+    radiusOf: (n) => (n.hub ? 11 : n.base ? 6.5 : 6),
+    labelOf: (n) => n.title,
+    labelColorOf: (n, p) => (n.base ? alpha(p.sub, 0.75) : p.ink),
     overlay: (ctx, view) => {
-      if (!picked) return;
-      const hub = view.byId.get("ih-hub"); if (!hub) return;
-      const s = view.screen(hub);
-      ctx.beginPath(); ctx.arc(s.x, s.y, 20, 0, Math.PI * 2); ctx.strokeStyle = alpha(BLUE, 0.5); ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+      if (!agentTo || !view.byId.get(agentTo)) return;
+      const s = view.screen(view.byId.get(agentTo)), tx = s.x + 14, ty = s.y - 14;
+      if (agent.x == null) { agent.x = tx; agent.y = ty; }
+      agent.x += (tx - agent.x) * 0.1; agent.y += (ty - agent.y) * 0.1;
+      ctx.beginPath(); ctx.arc(agent.x, agent.y, 10, 0, Math.PI * 2); ctx.fillStyle = "#a78bfa"; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = view.pal.bg; ctx.stroke();
+      ctx.fillStyle = "#fff"; ctx.font = "700 9px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("A1", agent.x, agent.y + 0.5);
     } });
-  const ark = new ForceCanvas(right.querySelector(".ih-canvas"), { fitPad: 22, padTop: 40,
-    colorOf: (n) => (n.base ? alpha(typeColor(n.type), 0.4) : typeColor(n.type)),
-    labelOf: (n) => (n.base ? null : n.hub || (n.labelled && ark.w > 420) ? n.title : null),
-    radiusOf: (n) => (n.hub ? 12 : n.base ? 6 : 7.5),
-    overlay: (ctx, view) => {
-      ctx.font = "500 10.5px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-      for (const n of view.nodes) {
-        if (!n.base) continue;
-        const s = view.screen(n);
-        ctx.fillStyle = alpha(view.pal.sub, 0.55);
-        const t = n.title.length > 26 ? n.title.slice(0, 25) + "…" : n.title;
-        ctx.fillText(t, s.x, s.y + 9);
-      }
-      if (agentTo && view.byId.get(agentTo)) {
-        const s = view.screen(view.byId.get(agentTo)), tx = s.x + 15, ty = s.y - 15;
-        if (agent.x == null) { agent.x = tx; agent.y = ty; }
-        agent.x += (tx - agent.x) * 0.1; agent.y += (ty - agent.y) * 0.1;
-        ctx.beginPath(); ctx.arc(agent.x, agent.y, 10, 0, Math.PI * 2); ctx.fillStyle = "#a78bfa"; ctx.fill();
-        ctx.lineWidth = 2; ctx.strokeStyle = view.pal.bg; ctx.stroke();
-        ctx.fillStyle = "#fff"; ctx.font = "700 9px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("A1", agent.x, agent.y + 0.5);
-      }
-    } });
+  ark.cfg = { ...ark.cfg, distance: 52 };
   const tools = (readOnly) => h("div", { class: "ih-tb" },
     readOnly ? h("span", { class: "ih-tb-ro" }, L("READ ONLY", "只读")) : h("span", { class: "ih-tb-mode" }, h("i", null, L("Read", "阅读")), h("i", { class: "on" }, L("Edit", "编辑"))),
     h("span", { class: "ih-tb-sel" }, "Force", icon("chevron", "sm")), icon("link", "sm"), icon("search", "sm"), icon("fit", "sm"), icon("maximize", "sm"));
   function counts() {
-    const ihN = BG_COUNT + IH_KIDS.length + 1, ihE = ih.edges.length;
+    const ihN = ih.nodes.length, ihE = ih.edges.length;
     left.querySelector(".ih-count").textContent = String(ihN);
     left.querySelector(".ih-stats").textContent = L(`${ihN} nodes · ${ihE} links`, `${ihN} 个节点 · ${ihE} 条连接`);
     left.querySelector(".ih-legend").replaceChildren(h("span", { style: `--c:${IDEA}` }, L("Idea", "想法") + " " + ihN));
@@ -875,83 +915,131 @@ function infohubScene(pane) {
       h("span", { style: `--c:${typeColor("question")}` }, L("Question", "问题") + " 1"), h("span", { style: `--c:${typeColor("claim")}` }, L("Claim", "论断") + " 2"));
   }
   function build() {
-    picked = false; pasted = false; agentTo = null; agent.x = null;
+    grabbed = false; agentTo = null; agent.x = null; drag = null;
     left.querySelector(".ih-title").textContent = L("InfoHub graph", "InfoHub 图谱");
     left.querySelector(".ih-sub").textContent = L("Read-only source · drag or copy into ARK", "只读来源 · 拖动或复制到 ARK");
     right.querySelector(".ih-title").textContent = L("ARK graph", "ARK 图谱");
     right.querySelector(".ih-sub").textContent = L("The editable project graph · drop here", "可编辑的项目图谱 · 拖放到这里");
     left.querySelector(".ih-tools").replaceChildren(tools(true));
     right.querySelector(".ih-tools").replaceChildren(tools(false));
-    // InfoHub: many faint items in loose groups, and the highlighted topic.
     const nodes = [], edges = [];
-    for (let i = 0; i < BG_COUNT; i++) {
-      nodes.push({ id: "bg" + i, type: "idea", status: "open", title: "" });
-      if (i % 7) edges.push({ source: "bg" + i, target: "bg" + (i - (i % 7)), relation: "part_of" });
-    }
+    IH_BG.forEach(([title, n], g) => {
+      const hub = "bh" + g;
+      nodes.push({ id: hub, type: "idea", status: "open", title: L(...title), bgHub: true });
+      for (let i = 0; i < n; i++) { nodes.push({ id: `${hub}-${i}`, type: "idea", status: "open", title: "" }); edges.push({ source: `${hub}-${i}`, target: hub, relation: "part_of" }); }
+      if (g) edges.push({ source: hub, target: "bh" + (g - 1 + (g % 2)), relation: "relates_to" });
+    });
     nodes.push({ id: "ih-hub", type: "idea", status: "active", title: L(...IH_HUB), cluster: true, hub: true });
     IH_KIDS.forEach((k, i) => { nodes.push({ id: "ih" + i, type: "idea", status: "open", title: L(...k), cluster: true }); edges.push({ source: "ih" + i, target: "ih-hub", relation: "part_of", cluster: true }); });
-    ih.set(nodes, edges); ih.settle(360);
-    // Put the topic in the middle, spread radially, and keep the rest around it.
-    for (const n of nodes) if (!n.cluster) { const d = Math.hypot(n.x, n.y) || 1, k = Math.max(1, 150 / d); n.x *= k; n.y *= k; }
-    const hubN = ih.byId.get("ih-hub"); hubN.x = 0; hubN.y = 0;
-    IH_KIDS.forEach((_, i) => { const n = ih.byId.get("ih" + i), a = i / IH_KIDS.length * Math.PI * 2 - Math.PI / 2; n.x = Math.cos(a) * 92; n.y = Math.sin(a) * 78; n.labelled = i % 3 === 0; });
-    ih.idle = Infinity; ih.view = null;
+    edges.push({ source: "ih-hub", target: "bh2", relation: "relates_to" });
+    ih.set(nodes, edges); ih.settle(420);
     ark.set(ARK_BASE.map(([id, type, en, cn]) => ({ id, type, status: "open", title: L(en, cn), base: true })),
       [["c1", "q1"], ["x1", "c1"], ["c2", "q1"], ["s1", "c2"]].map(([a, b]) => ({ source: a, target: b, relation: "part_of" })));
     ark.settle(300);
-    ghost.classList.remove("on", "fly"); toast.classList.remove("on");
+    over.style.display = "none"; toast.classList.remove("on");
     toast.textContent = L(`Pasted ${IH_KIDS.length + 1} orphan nodes`, `已粘贴 ${IH_KIDS.length + 1} 个孤立节点`);
     counts(); ih.draw(); ark.draw();
   }
-  function paste(withBirth) {
-    if (pasted) return;
-    pasted = true;
-    const hub = { id: "ark-hub", type: "idea", status: "inbox", title: L(...IH_HUB), hub: true, x: 40, y: 10 };
-    ark.add(hub, []);
-    hub.x = 40; hub.y = 10;
-    IH_KIDS.forEach((k, i) => {
-      const n = { id: "ak" + i, type: "idea", status: "inbox", title: L(...k) };
-      ark.add(n, [{ source: n.id, target: "ark-hub", relation: "part_of" }]);
-      const a = i / IH_KIDS.length * Math.PI * 2; n.x = 40 + Math.cos(a) * 70; n.y = 10 + Math.sin(a) * 60; n.labelled = i % 3 === 0;
-    });
-    if (!withBirth) { ark.nodes.forEach((n) => { n.born = null; }); ark.edges.forEach((e) => { e.born = null; }); }
-    counts();
+  // ---- the drag: the hub follows the pointer, items trail on springs.
+  let drag = null, frame = 0;
+  function sizeOver() {
+    const r = pane.getBoundingClientRect(), dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    over.width = Math.round(r.width * dpr); over.height = Math.round(r.height * dpr);
+    over.style.width = r.width + "px"; over.style.height = r.height + "px";
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return r;
   }
-  const at = (fc, el, id) => {
-    const n = fc.byId.get(id); if (!n || !fc.view) return { x: 0, y: 0 };
-    const s = fc.screen(n), r = el.getBoundingClientRect(), p = pane.getBoundingClientRect();
-    return { x: s.x + r.left - p.left, y: s.y + r.top - p.top };
+  const paneXY = (fc, el, n) => { const s = fc.screen(n), r = el.getBoundingClientRect(), p = pane.getBoundingClientRect(); return { x: s.x + r.left - p.left, y: s.y + r.top - p.top }; };
+  function grab() {
+    const p = sizeOver(), el = left.querySelector(".ih-canvas");
+    const items = ["ih-hub", ...IH_KIDS.map((_, i) => "ih" + i)].map((id) => {
+      const n = ih.byId.get(id), q = paneXY(ih, el, n);
+      return { id, title: n.title, hub: !!n.hub, x: q.x, y: q.y, vx: 0, vy: 0 };
+    });
+    const rr = right.querySelector(".ih-canvas").getBoundingClientRect();
+    const from = { x: items[0].x, y: items[0].y }, to = { x: rr.left - p.left + rr.width * 0.72, y: rr.top - p.top + rr.height * 0.66 };
+    drag = { items, from, to, t0: performance.now(), dur: 2100 };
+    grabbed = true;
+    // The source graph feels the pull: nearby nodes are nudged toward the pointer.
+    const hub = ih.byId.get("ih-hub");
+    for (const n of ih.nodes) if (!n.cluster) { const dx = hub.x - n.x, dy = hub.y - n.y, d = Math.hypot(dx, dy) || 1; if (d < 160) { n.vx += dx / d * 1.6; n.vy += dy / d * 1.6; } }
+    over.style.display = "block";
+    cancelAnimationFrame(frame); frame = requestAnimationFrame(stepDrag);
+  }
+  function stepDrag(now) {
+    if (!drag) return;
+    const u = Math.min(1, (now - drag.t0) / drag.dur), e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+    const hub = drag.items[0];
+    hub.x = drag.from.x + (drag.to.x - drag.from.x) * e;
+    hub.y = drag.from.y + (drag.to.y - drag.from.y) * e - Math.sin(e * Math.PI) * 36;
+    const kids = drag.items.slice(1);
+    for (const a of kids) {
+      const dx = hub.x - a.x, dy = hub.y - a.y, d = Math.hypot(dx, dy) || 1, f = (d - 44) * 0.018;
+      a.vx += dx / d * f; a.vy += dy / d * f;
+      for (const b of kids) if (b !== a) { const ex = a.x - b.x, ey = a.y - b.y, d2 = Math.max(80, ex * ex + ey * ey); a.vx += ex / d2 * 9; a.vy += ey / d2 * 9; }
+    }
+    for (const a of kids) { a.vx *= 0.86; a.vy *= 0.86; a.x += a.vx; a.y += a.vy; }
+    const p = pal(), r = over.getBoundingClientRect();
+    octx.clearRect(0, 0, r.width, r.height);
+    octx.strokeStyle = alpha(BLUE, 0.55); octx.lineWidth = 1.2;
+    for (const a of kids) { octx.beginPath(); octx.moveTo(hub.x, hub.y); octx.lineTo(a.x, a.y); octx.stroke(); }
+    for (const a of kids) drawForceNode(octx, { status: "open" }, a.x, a.y, 6, BLUE, p.bg);
+    drawForceNode(octx, { status: "active" }, hub.x, hub.y, 11, BLUE, p.bg);
+    octx.font = "600 11px system-ui, 'Segoe UI', 'Microsoft YaHei', sans-serif"; octx.textAlign = "center"; octx.textBaseline = "top";
+    octx.lineWidth = 3; octx.strokeStyle = alpha(p.bg, 0.85); octx.strokeText(hub.title, hub.x, hub.y + 14); octx.fillStyle = p.ink; octx.fillText(hub.title, hub.x, hub.y + 14);
+    // Pointer on the hub.
+    octx.save(); octx.translate(hub.x + 5, hub.y + 4); octx.beginPath();
+    octx.moveTo(0, 0); octx.lineTo(0, 15); octx.lineTo(4, 11); octx.lineTo(7.5, 18); octx.lineTo(10, 17); octx.lineTo(6.5, 10); octx.lineTo(12, 10); octx.closePath();
+    octx.fillStyle = p.ink; octx.strokeStyle = p.bg; octx.lineWidth = 1.2; octx.fill(); octx.stroke(); octx.restore();
+    if (u < 1 || now - drag.t0 < drag.dur + 350) frame = requestAnimationFrame(stepDrag);
+  }
+  function drop(animated) {
+    const el = right.querySelector(".ih-canvas"), rr = el.getBoundingClientRect(), p = pane.getBoundingClientRect(), v = ark.view;
+    const toWorld = (q) => ({ x: (q.x - (rr.left - p.left) - v.x) / v.z, y: (q.y - (rr.top - p.top) - v.y) / v.z });
+    const items = drag ? drag.items : null;
+    const add = (id, title, hub, i) => {
+      const n = { id, type: "idea", status: "inbox", title, hub };
+      ark.add(n, []);
+      if (items) { const w = toWorld(items[i]); n.x = w.x; n.y = w.y; }
+      else { const a = i / IH_KIDS.length * Math.PI * 2; n.x = 160 + Math.cos(a) * 30; n.y = 120 + Math.sin(a) * 30; }
+      n.vx = (Math.random() - 0.5) * 3; n.vy = (Math.random() - 0.5) * 3;
+    };
+    add("ark-hub", L(...IH_HUB), true, 0);
+    IH_KIDS.forEach((k, i) => add("ak" + i, L(...k), false, i + 1));
+    drag = null; cancelAnimationFrame(frame); over.style.display = "none"; grabbed = false;
+    ark.idle = 0; counts();
+  }
+  const linkUp = (animated) => {
+    const born = animated ? performance.now() : null;
+    IH_KIDS.forEach((_, i) => ark.edges.push({ source: "ak" + i, target: "ark-hub", relation: "part_of", born }));
+    for (const n of ark.nodes) n.degree = ark.edges.filter((e) => e.source === n.id || e.target === n.id).length;
+    ark.idle = 0; counts();
   };
+  const linkProject = (animated) => { ark.edges.push({ source: "ark-hub", target: "q1", relation: "relates_to", born: animated ? performance.now() : null }); ark.idle = 0; counts(); };
   const t = timersOf();
   let running = false;
   build();
   refreshers.add(() => { build(); if (!running) settle(); });
   function settle() {
     t.clear(); ih.stop(); ark.stop(); build();
-    picked = true; paste(false);
-    ark.edges.push({ source: "ark-hub", target: "q1", relation: "relates_to" });
-    ark.settle(220); ark.fit(true);
-    agentTo = "ark-hub"; toast.classList.add("on"); counts();
+    drop(false); linkUp(false); linkProject(false);
+    ark.settle(360); ark.fit(true);
+    agentTo = "ark-hub"; counts();
     ih.draw(); ark.draw();
   }
   return {
-    length: 11000,
+    length: 12000,
     play() {
       running = true; t.clear(); build(); ih.start(); ark.start();
-      t.add(800, () => { picked = true; });
-      t.add(1900, () => {
-        const a = at(ih, left.querySelector(".ih-canvas"), "ih-hub"), rr = right.querySelector(".ih-canvas").getBoundingClientRect(), p = pane.getBoundingClientRect();
-        const b = { x: rr.left - p.left + rr.width * 0.55, y: rr.top - p.top + rr.height * 0.55 };
-        ghost.style.transform = `translate(${a.x - 60}px, ${a.y - 45}px)`; ghost.classList.add("on");
-        t.add(60, () => { ghost.classList.add("fly"); ghost.style.transform = `translate(${b.x - 60}px, ${b.y - 45}px)`; });
-      });
-      t.add(3900, () => { ghost.classList.remove("on", "fly"); paste(true); });
-      t.add(4400, () => toast.classList.add("on"));
-      t.add(6600, () => { toast.classList.remove("on"); ark.edges.push({ source: "ark-hub", target: "q1", relation: "relates_to", born: performance.now() }); ark.idle = 0; counts(); });
-      t.add(7600, () => { agentTo = "ark-hub"; });
-      t.add(9000, () => { agentTo = "ak3"; });
+      t.add(1200, grab);
+      t.add(1200 + 2400, () => drop(true));
+      t.add(4000, () => toast.classList.add("on"));
+      t.add(5300, () => linkUp(true));
+      t.add(6800, () => { toast.classList.remove("on"); linkProject(true); });
+      t.add(7800, () => { agentTo = "ark-hub"; });
+      t.add(9600, () => { agentTo = "ak1"; });
     },
-    stop() { running = false; t.clear(); ih.stop(); ark.stop(); },
+    stop() { running = false; t.clear(); ih.stop(); ark.stop(); cancelAnimationFrame(frame); },
     settle() { running = false; settle(); },
     resize() { ih.resize(); ih.view = null; ark.resize(); ark.view = null; ih.draw(); ark.draw(); },
   };
@@ -999,11 +1087,9 @@ if (hero) {
     if (go && !running) { running = true; hero.classList.remove("static"); startCurrent(); }
     else if (!go && running) { running = false; t.clear(); sceneAt(index).stop(); sceneAt(index).settle(); }
   }
-  const wrapEl = hero.closest(".mock-wrap");
-  wrapEl.addEventListener("mouseenter", () => { paused = true; update(); });
-  wrapEl.addEventListener("mouseleave", () => { paused = false; update(); });
-  wrapEl.addEventListener("focusin", () => { paused = true; update(); });
-  wrapEl.addEventListener("focusout", (e) => { if (!wrapEl.contains(e.relatedTarget)) { paused = false; update(); } });
+  // Hover never pauses; keyboard focus in the switcher does.
+  nav.addEventListener("focusin", (e) => { if (e.target.matches(":focus-visible")) { paused = true; update(); } });
+  nav.addEventListener("focusout", (e) => { if (!nav.contains(e.relatedTarget)) { paused = false; update(); } });
   refreshers.add(renderNav);
   if ("IntersectionObserver" in window) new IntersectionObserver((e) => { visible = e[0].isIntersecting; update(); }, { threshold: 0.1 }).observe(hero);
   document.addEventListener("visibilitychange", update);

@@ -630,14 +630,19 @@ a.affil-card:hover .logo{background-color:var(--sub)}
 .ih-legend span{display:inline-flex;align-items:center;gap:5px}
 .ih-legend span::before{content:"";width:7px;height:7px;border-radius:99px;background:var(--c)}
 .ih-stats{position:absolute;right:12px;bottom:11px;font-size:.68rem;color:var(--mute)}
-.ih-ghost{position:absolute;left:0;top:0;width:120px;height:90px;display:none;pointer-events:none;z-index:4;opacity:.85}
-.ih-ghost.on{display:block}
-.ih-ghost.fly{transition:transform 1.8s cubic-bezier(.45,.05,.25,1)}
-.ih-ghost .g-e{stroke:#3b82f6;stroke-width:1.4;opacity:.6}
-.ih-ghost .g-n{fill:#3b82f6}
-.ih-ghost .g-hub{fill:#3b82f6;stroke:var(--card);stroke-width:2}
-.ih-ghost .g-cur{fill:var(--ink);stroke:var(--card);stroke-width:1}
+.ih-over{position:absolute;left:0;top:0;display:none;pointer-events:none;z-index:4}
 .ih-toast{position:absolute;left:75%;bottom:52px;transform:translate(-50%,8px);padding:7px 14px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
   background:var(--card);box-shadow:var(--shadow-sm);font-size:.78rem;opacity:0;transition:opacity .35s,transform .35s;z-index:3;white-space:nowrap}
 .ih-toast.on{opacity:1;transform:translate(-50%,0)}
 @media(max-width:560px){.scene-ih{grid-template-columns:minmax(0,1fr);gap:8px;padding:8px}.ih-sub,.ih-tools,.ih-stats{display:none}.ih-canvas{min-height:230px}.ih-toast{left:50%}}
+
+/* Hover inside the hero mock: ARK's hover states, visual only. */
+.mock-tab{cursor:pointer;transition:background .12s,color .12s}
+.mock-tab:not(.on):hover{color:var(--ink);background:color-mix(in srgb,var(--card) 70%,transparent)}
+.mock .ms-task,.mock .ag-card,.mock .rq-item,.mock .rq-job,.mock .rv-row,.mock .ih-panel{transition:background .12s,border-color .12s}
+.mock .ms-task:hover,.mock .ag-card:hover,.mock .rq-item:hover,.mock .rq-job:hover{cursor:pointer;background:color-mix(in srgb,var(--card) 88%,var(--accent));border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.mock .rv-row:hover{cursor:pointer;background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.mock .btn,.mock .rv-all,.mock .ih-tb > *{cursor:pointer}
+.mock .ih-tb > *:hover{color:var(--ink)}
+.needs-on .mock-needs{pointer-events:auto}
+.mock .needs-row:hover{background:color-mix(in srgb,var(--accent) 5%,transparent)}
