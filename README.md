@@ -1,9 +1,92 @@
-# ARK Studio website
+# ARK Studio product site
 
-Product and download page for [ARK Studio](https://github.com/MasterYip/ARK-Studio):
-<https://masteryip.github.io/ark-studio-site/>
+The product introduction and download page for ARK Studio. Plain HTML, CSS and
+JavaScript: no build step, no external fonts, scripts or trackers.
 
-Static HTML, CSS and JavaScript; no build step. Download links are resolved
-from the latest GitHub release of ARK Studio in the browser, with the releases
-page as a fallback. The source lives in the ARK Studio repository under `site/`;
-this repository holds the published copy.
+```text
+site/
+  index.html               the page (English text inline, affiliation logos inline SVG)
+  assets/css/site.css      site layout; light and dark palettes from ark_studio/web/css/app.css
+  assets/css/ark-ui.css    ARK component rules extracted from app.css, scoped under .ark-ui
+  assets/js/site.js        中文 strings, language and theme switch, tabs, OS detection,
+                           release download links
+  assets/js/ark-live.js    live previews: hero animation, Home, Map, Mind, Board, Resources
+  assets/js/ark/           ARK frontend modules copied unchanged (graph-core, icons, arrows,
+                           node-card, mind-layout) with their MIT license
+  assets/img/              brand lockups and icons; shots/home-light.webp is only the
+                           social preview image
+  tools/extract_ark_css.py regenerates ark-ui.css from app.css
+  deploy/github-pages.yml  disabled GitHub Pages workflow template
+  .nojekyll                serve the folder as is on GitHub Pages
+```
+
+## Preview
+
+```sh
+python -m http.server 8000 --directory site --bind 127.0.0.1
+```
+
+Open <http://127.0.0.1:8000/>. `?lang=zh` or `?lang=en` forces the language;
+otherwise the browser language decides, and the switch in the top bar is
+remembered. The theme follows the system until the toggle is used.
+
+## Downloads
+
+Asset names carry the version, so `site.js` asks the GitHub API for
+`repos/MasterYip/ARK-Studio/releases/latest` and points each button at the
+matching asset (patterns in `PATTERNS`). The answer is cached for an hour per
+tab. Without the API (offline, rate limit) every link opens the latest release
+page, which always works. When release asset names change, update `PATTERNS`.
+
+The visitor's system (Windows, macOS, Linux, Android) highlights its card and
+labels the main button. On Chromium-based browsers macOS Intel is detected;
+other macOS browsers get Apple silicon first.
+
+## Live previews
+
+The hero, the pillar visuals and the preview tabs are built in the page, not
+screenshots. `ark-live.js` renders a fixed, fictional demo project (a
+learning-rate warm-up study) with ARK's own code:
+
+* Map and hero: ARK's Force physics and node painter (`ark/graph-core.js`,
+  `stepForce`, `drawForceNode`, arrowheads) on a canvas.
+* Mind: ARK's Mind layout and card sizing (`ark/mind-layout.js`,
+  `ark/node-card.js`); cards are painted the way `graph.js` paints them.
+* Home and Board: the markup ARK renders for KPI tiles, Needs you, the
+  research pipeline and task cards, styled by `ark-ui.css`.
+* Resources: the device cards rebuilt in DOM (ARK draws them on a canvas in a
+  view that needs a server); hosts, jobs and usage are made up.
+
+Nothing connects to a server. Components start when scrolled into view, the
+hero pauses off screen, and `prefers-reduced-motion` shows a settled frame.
+The page needs HTTP (ES modules), not `file://`.
+
+To update after ARK changes, copy the five modules again from
+`ark_studio/web/js/` (keep the three-line header) and rerun
+`tools/extract_ark_css.py`. The full `GraphView` is not used: it imports the
+API client and app state (48 files).
+
+## Publishing
+
+Not published. Pick one:
+
+1. **Organization site, `https://ark-studio.github.io/`**: create the GitHub
+   organization `ark-studio` and a public repository `ark-studio.github.io`,
+   copy the contents of `site/` to its root, copy `deploy/github-pages.yml` to
+   `.github/workflows/` with `SITE_DIR: .`, set Settings > Pages > Source to
+   "GitHub Actions" and run the workflow with `publish`.
+2. **Project site** (live now at `https://masteryip.github.io/ark-studio-site/`
+   from the repository `MasterYip/ark-studio-site`, or at
+   `https://masteryip.github.io/ARK-Studio/`): the page uses
+   relative paths, so it works under a sub-path. The public export
+   (`scripts/release/publish_public.py`) does not include `site/` today: add
+   `"site"` to `ROOT_DIRS`, copy the workflow to `.github/workflows/`
+   (`SITE_DIR: site`) and enable Pages with "GitHub Actions".
+3. **Custom domain**: either of the above plus a `CNAME` file in the published
+   folder and the DNS record from the GitHub Pages documentation.
+
+Before publishing, audit the folder:
+
+```sh
+python scripts/release/publish_public.py --audit site
+```

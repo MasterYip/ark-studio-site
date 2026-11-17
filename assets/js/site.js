@@ -25,15 +25,44 @@
     "f.acc.t": "账户与权限",
     "f.acc.p": "组织角色、项目授权和限定范围的智能体令牌。个人设备和凭据只对其所有者可见。",
     "tab.resources": "资源",
-    "cap.resources": "资源：一台工作站、ARK 服务器和两台 GPU 服务器，标出我们的任务占用的 GPU 和他人使用的 GPU（示例数据）。",
-    "nav.how": "工作方式", "nav.features": "功能", "nav.shots": "截图", "nav.download": "下载",
+    "cap.resources": "资源：一台工作站、ARK 服务器和两台 GPU 服务器，标出我们的任务占用的 GPU 和他人使用的 GPU。示例数据。",
+    "nav.about": "关于",
+    "mock.aria": "ARK Studio 动画演示：研究地图逐步生长，两个智能体执行实验，结果送来审阅并被验收。",
+    "mock.project": "预热研究",
+    "mock.home": "首页",
+    "mock.research": "研究",
+    "mock.map": "地图",
+    "mock.execute": "执行",
+    "mock.output": "产出",
+    "mock.live": "2 个智能体运行中",
+    "mock.t.q": "问题",
+    "mock.t.c": "论断",
+    "mock.t.e": "证据",
+    "mock.t.p": "相关工作",
+    "mock.t.x": "实验",
+    "mock.t.k": "任务",
+    "mock.tasks": "任务",
+    "mock.active": "进行中",
+    "mock.st.queued": "排队",
+    "mock.st.active": "进行中",
+    "mock.st.review": "待审阅",
+    "mock.st.done": "已完成",
+    "mock.task1": "运行预热扫描",
+    "mock.task2": "重跑基线，3 个种子",
+    "mock.task3": "绘制损失曲线",
+    "about.eyebrow": "关于",
+    "about.by": "开发者",
+    "about.p": "ARK Studio 由 MasterYip 设计和开发，以 MIT 许可证开源。欢迎在 GitHub 上提交问题和拉取请求。",
+    "about.affil": "所属机构",
+    "about.hit.zh": "哈尔滨工业大学",
+    "about.sii": "上海创智学院",
+    "nav.how": "工作方式", "nav.features": "功能", "nav.shots": "预览", "nav.download": "下载",
     "nav.selfhost": "自托管", "nav.docs": "文档", "theme.toggle": "切换浅色和深色主题",
     "hero.eyebrow": "Auto-Research Kit · 开源",
     "hero.title": "研究交给智能体，<br><span class=\"accent\">由你审阅和验收。</span>",
         "hero.download": "下载", "hero.github": "在 GitHub 上查看",
     "hero.note": "支持 Windows、macOS、Linux 和 Android，基于 MIT 许可证免费使用。", "hero.all": "全部下载",
     "hero.works": "可配合", "hero.http": "任意 HTTP 客户端",
-    "reel.home": "首页", "reel.map": "研究地图", "reel.topic": "主题",
     "how.eyebrow": "工作方式", "how.title": "从问题到验收，一条闭环",
     "how.lead": "智能体完成繁琐的工作，并如实记录；方向由你定，决定由你做。",
     "how.s1.t": "收集", "how.s1.p": "一个问题、一个想法或一篇论文都会成为一个节点，资料来源随之保留。",
@@ -56,17 +85,13 @@
     "f.mob.t": "移动端", "f.mob.p": "响应式网页应用和两款 Android 应用。扫码配对手机，离开电脑也能审阅结果、验收工作。",
     "f.srv.t": "自托管 Go 服务器", "f.srv.p": "一个 <code>ark-server</code> 可执行文件，内置纯 Go 的 SQLite。支持账户、反向代理下的 HTTPS、systemd 单元，项目文件夹可移植，便于备份和迁移。",
     "more": "了解更多",
-    "shots.eyebrow": "截图", "shots.title": "用内置示例看一看",
-    "shots.lead": "每次全新安装都带有 PredActor 示例项目，在放入自己的工作之前就可以先体验。",
-    "tab.home": "首页", "tab.map": "地图", "tab.mind": "Mind 布局", "tab.topic": "主题", "tab.board": "任务看板",
-    "tab.editor": "编辑器", "tab.phone": "手机",
-    "cap.home": "首页：与上周对比的关键数字、带图表的待处理事项、研究流水线和团队负载。",
-    "cap.map": "地图：以力导向图展示整个论证，左侧是局部图，右侧是节点检查器。",
-    "cap.mind": "Mind 布局：同样的节点排成一份可从左到右阅读的大纲。",
-    "cap.topic": "主题：把一篇论文的故事线做成画布，带有自己的大纲，从动机到证据再到局限。",
-    "cap.board": "执行：按状态排列的任务，每一个都可以直接交给智能体会话。",
-    "cap.editor": "编辑器：Markdown 源码与预览并排显示，支持表格、公式和指回图中的链接。",
-    "cap.phone": "手机上：带底部导航的响应式网页应用。Android 应用连接的是同一台服务器。",
+    "shots.eyebrow": "实时预览", "shots.title": "真实界面，在本页中运行",
+    "shots.lead": "这些视图使用 ARK 自己的地图渲染器、布局代码和样式，配一个小型示例项目，不连接任何服务器。",
+    "tab.home": "首页", "tab.map": "地图", "tab.mind": "Mind 布局", "tab.board": "任务看板",
+    "cap.home": "首页：与上周对比的关键数字、等待你验收的结果和研究流水线。",
+    "cap.map": "地图：用 ARK 自身的物理布局展示整个论证。颜色表示节点类型，图标表示状态。",
+    "cap.mind": "Mind 布局：同一批节点排成大纲，从故事线到问题、论断、实验和任务。",
+    "cap.board": "执行：按状态排列的任务和负责人，人和智能体都在其中。",
     "dl.eyebrow": "下载", "dl.title": "获取 ARK Studio",
     "dl.lead": "桌面应用在你的电脑上运行 ARK，并能连接你的服务器。无需 Python、无需账户，也无需模型密钥即可开始。",
     "dl.detecting": "请选择适合你系统的版本。", "dl.rec": "适合你的系统",
@@ -170,16 +195,13 @@
       var id = tab.getAttribute("data-shot");
       tabs.forEach(function (b) { b.setAttribute("aria-selected", String(b === tab)); });
       document.querySelectorAll(".shot[data-shot]").forEach(function (p) {
-        p.classList.toggle("on", p.getAttribute("data-shot") === id);
+        var on = p.getAttribute("data-shot") === id;
+        p.classList.toggle("on", on);
+        p.hidden = !on;
+        if (on) document.dispatchEvent(new CustomEvent("ark-live-shown", { detail: p }));
       });
     });
   });
-
-  // Phones open on the phone screenshots.
-  if (window.matchMedia && matchMedia("(max-width: 600px)").matches) {
-    var phoneTab = document.querySelector('[role=tab][data-shot="phone"]');
-    if (phoneTab) phoneTab.click();
-  }
 
   // ------------------------------------------------------------------ copy
   document.querySelectorAll("[data-copy]").forEach(function (b) {
